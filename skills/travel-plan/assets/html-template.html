@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TRIP_NAME}}</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="trip-header">
+        <div class="header-content">
+            <h1>{{TRIP_NAME}}</h1>
+            <p class="trip-meta">{{DURATION}} · {{DATE}}</p>
+        </div>
+    </header>
+    
+    <main class="container">
+        {{ITINERARY_SECTIONS}}
+        
+        <section class="tips-section">
+            <h2>旅遊注意事項</h2>
+            <ul class="tips-list">
+                {{TRAVEL_TIPS}}
+            </ul>
+        </section>
+        
+        <section class="actions-section">
+            <button class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
+            <button class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
+        </section>
+    </main>
+    
+    <footer class="footer">
+        <p>此行程由 Travel Plan Agent 產生</p>
+    </footer>
+    
+    <script>
+        function copyAll() {
+            const content = document.querySelector('main').innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('已複製到剪貼簿！');
+            });
+        }
+        
+        function shareViaLINE() {
+            const url = encodeURIComponent(window.location.href);
+            const text = encodeURIComponent('{{TRIP_NAME}}\n{{DATE}}\n查看完整行程：');
+            window.open(`https://line.me/R/msg/text/?${text}%20${url}`, '_blank');
+        }
+    </script>
+</body>
+</html>

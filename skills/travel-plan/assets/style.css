@@ -1,0 +1,400 @@
+/* Travel Plan - Vibrant Mobile Styles */
+
+/* CSS Variables - Vibrant Color Scheme */
+:root {
+    --primary: #FF6B6B;
+    --primary-dark: #E85555;
+    --primary-light: #FF8A8A;
+    --secondary: #4ECDC4;
+    --secondary-dark: #3DBDB4;
+    --secondary-light: #6EDDD4;
+    --accent: #FFE66D;
+    --accent-dark: #FFD93D;
+    --background: #F7FFF7;
+    --surface: #FFFFFF;
+    --surface-alt: #F8F9FA;
+    --text-dark: #2C3E50;
+    --text-medium: #5D6D7E;
+    --text-light: #95A5A6;
+    --border: #E8EEEF;
+    --shadow: rgba(44, 62, 80, 0.1);
+    --shadow-hover: rgba(44, 62, 80, 0.15);
+    --success: #27AE60;
+    --warning: #F39C12;
+    --error: #E74C3C;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #FF6B6B 0%, #FF8A8A 100%);
+    --gradient-secondary: linear-gradient(135deg, #4ECDC4 0%, #6EDDD4 100%);
+}
+
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Typography */
+h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--surface);
+    margin-bottom: 0.25rem;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+p {
+    font-size: 0.95rem;
+    color: var(--text-medium);
+    margin-bottom: 0.5rem;
+}
+
+/* Header */
+.trip-header {
+    background: var(--gradient-primary);
+    padding: 1.5rem 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 20px var(--shadow);
+}
+
+.header-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.trip-meta {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+/* Container */
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+    padding-bottom: 100px;
+}
+
+/* Day Section */
+.day-section {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 12px var(--shadow);
+    transition: transform 0.2s ease;
+}
+
+.day-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px var(--shadow-hover);
+}
+
+.day-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.day-badge {
+    background: var(--gradient-secondary);
+    color: white;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.day-title {
+    font-size: 1.1rem;
+    color: var(--text-dark);
+}
+
+/* Time Card */
+.time-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    background: var(--surface-alt);
+    border-left: 4px solid var(--primary);
+    transition: all 0.2s ease;
+}
+
+.time-card:hover {
+    background: var(--background);
+}
+
+.time-card.morning {
+    border-left-color: var(--secondary);
+}
+
+.time-card.afternoon {
+    border-left-color: var(--accent);
+}
+
+.time-card.evening {
+    border-left-color: var(--primary);
+}
+
+.time-card.break {
+    border-left-color: var(--warning);
+    background: linear-gradient(135deg, #FFF9E6 0%, #FFF5CC 100%);
+}
+
+.time-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 55px;
+    font-variant-numeric: tabular-nums;
+}
+
+.spot-info {
+    flex: 1;
+}
+
+.spot-info h3 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.spot-info p {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    margin-bottom: 0;
+}
+
+.spot-tag {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+}
+
+.tag-attraction {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.tag-break {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.tag-meal {
+    background: #FCE4EC;
+    color: #C2185B;
+}
+
+/* Tips Section */
+.tips-section {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 12px var(--shadow);
+}
+
+.tips-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+.tips-section h2::before {
+    content: '💡';
+    font-size: 1.25rem;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+}
+
+.tips-list li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+}
+
+.tips-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: bold;
+}
+
+/* Actions Section */
+.actions-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.btn {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+/* Travel Time Indicator */
+.travel-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(78, 205, 196, 0.1);
+    border-radius: 4px;
+}
+
+.travel-time::before {
+    content: '🚗';
+    font-size: 0.9rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 380px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .time-label {
+        font-size: 0.85rem;
+        min-width: 50px;
+    }
+    
+    .actions-section {
+        flex-direction: column;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .trip-header {
+        background: var(--text-dark) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .actions-section,
+    .footer {
+        display: none;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #1A1A2E;
+        --surface: #16213E;
+        --surface-alt: #1F2B4D;
+        --text-dark: #E8EEEF;
+        --text-medium: #A0AAB5;
+        --text-light: #6C7A89;
+        --border: #2D3A5A;
+        --shadow: rgba(0, 0, 0, 0.3);
+        --shadow-hover: rgba(0, 0, 0, 0.4);
+    }
+    
+    .tips-list li::before {
+        color: var(--accent);
+    }
+}
