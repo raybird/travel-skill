@@ -2,8 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FF6B6B">
     <title>{{TRIP_NAME}}</title>
+    <script>document.documentElement.classList.add('js');</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap">
     <style>
 {{STYLES}}
     </style>
@@ -12,36 +17,57 @@
     <header class="trip-header">
         <div class="header-content">
             <h1>{{TRIP_NAME}}</h1>
-            <p class="trip-meta">{{DURATION}} · {{DATE}}</p>
+            <p class="trip-meta">{{TRIP_META}}</p>
+            {{TRAVELER_LEGEND}}
         </div>
     </header>
-    
+
+    <nav class="trip-nav" aria-label="行程導覽">
+        <div class="nav-inner">
+            <div class="day-tabs" role="tablist">
+                {{DAY_TABS}}
+            </div>
+            {{PLAN_TOGGLE}}
+        </div>
+    </nav>
+
     <main class="container">
-        {{ITINERARY_SECTIONS}}
-        
-        <section class="tips-section">
-            <h2>旅遊注意事項</h2>
-            <ul class="tips-list">
-                {{TRAVEL_TIPS}}
-            </ul>
+        {{DAY_PANELS}}
+
+        <section class="day-panel info-panel" id="info" role="tabpanel" aria-labelledby="tab-info">
+            <div class="day-header">
+                <span class="day-badge">須知</span>
+                <h2 class="day-title">行前須知</h2>
+            </div>
+            {{OVERVIEW}}
+            <section class="info-card tips-section">
+                <h2>旅遊注意事項</h2>
+                <ul class="tips-list">
+                    {{TRAVEL_TIPS}}
+                </ul>
+            </section>
         </section>
-        
+
         <section class="actions-section">
-            <button class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
-            <button class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
+            <button type="button" class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
+            <button type="button" class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
         </section>
     </main>
-    
+
     <footer class="footer">
         <p>此行程由 Travel Plan Agent 產生</p>
     </footer>
-    
+
     <script>
         const tripName = {{TRIP_NAME_JSON}};
         const tripDate = {{DATE_JSON}};
+        const root = document.documentElement;
 
         function copyAll() {
+            // Read hidden days and plans too: drop the tab/plan switching styles for a moment
+            root.classList.remove('js');
             const content = document.querySelector('main').innerText;
+            root.classList.add('js');
             navigator.clipboard.writeText(content).then(() => {
                 alert('已複製到剪貼簿！');
             }).catch(() => {
@@ -54,6 +80,65 @@
             const text = encodeURIComponent(tripName + '\n' + tripDate + '\n查看完整行程：');
             window.open('https://line.me/R/msg/text/?' + text + '%20' + url, '_blank', 'noopener');
         }
+
+        (function () {
+            const tabs = Array.from(document.querySelectorAll('.day-tab'));
+            const panels = Array.from(document.querySelectorAll('.day-panel'));
+            const planButtons = Array.from(document.querySelectorAll('.plan-btn'));
+            const nav = document.querySelector('.trip-nav');
+            const main = document.querySelector('main');
+            const planKey = 'travel-plan:' + tripName + ':plan';
+
+            function showPanel(id) {
+                if (!panels.some((panel) => panel.id === id)) {
+                    id = panels.length ? panels[0].id : '';
+                }
+                panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === id));
+                tabs.forEach((tab) => {
+                    const selected = tab.dataset.target === id;
+                    tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    tab.tabIndex = selected ? 0 : -1;
+                    if (selected) {
+                        tab.scrollIntoView({ block: 'nearest', inline: 'center' });
+                    }
+                });
+            }
+
+            function setPlan(plan) {
+                root.dataset.plan = plan;
+                planButtons.forEach((button) => {
+                    button.setAttribute('aria-pressed', button.dataset.plan === plan ? 'true' : 'false');
+                });
+                try { localStorage.setItem(planKey, plan); } catch (e) {}
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    showPanel(tab.dataset.target);
+                    try { history.replaceState(null, '', '#' + tab.dataset.target); } catch (e) {}
+                    const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
+                    if (window.scrollY > top) {
+                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    }
+                });
+                tab.addEventListener('keydown', (event) => {
+                    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+                    if (!step) return;
+                    const next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+                    next.focus();
+                    next.click();
+                });
+            });
+
+            planButtons.forEach((button) => {
+                button.addEventListener('click', () => setPlan(button.dataset.plan));
+            });
+
+            let savedPlan = null;
+            try { savedPlan = localStorage.getItem(planKey); } catch (e) {}
+            setPlan(savedPlan === 'rain' ? 'rain' : 'sun');
+            showPanel(decodeURIComponent(location.hash.slice(1)));
+        })();
     </script>
 </body>
 </html>

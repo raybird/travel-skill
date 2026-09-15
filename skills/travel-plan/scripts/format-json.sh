@@ -1,173 +1,60 @@
 #!/bin/bash
 # Travel Plan - JSON Output Formatter
-# Generates structured JSON itinerary from input data
+# Normalizes itinerary JSON to the schema in references/output-formats.md,
+# fills meta and summary, and reports problems (bad times, unknown travelers, missed deadlines) on stderr.
+
+set -euo pipefail
 
 INPUT_FILE="${1:-/dev/stdin}"
 OUTPUT_FILE="${2:-/dev/stdout}"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+source "$(dirname "$0")/lib/common.sh"
 
-print_json_header() {
-    cat << 'EOF'
-{
-  "meta": {
-    "generated_at": "EOF
-}
-
-print_json_timestamp() {
-    date -u +"%Y-%m-%dT%H:%M:%SZ"
-}
-
-print_json_rest() {
-    cat << 'EOF'
-",
-    "generator": "travel-plan-agent",
-    "version": "1.0.0"
-  },
-  "trip": {
-    "name": "",
-    "duration_days": 0,
-    "date": "",
-    "starting_point": "",
-    "transportation": ""
-  },
-  "itinerary": [],
-  "summary": {
-    "total_attractions": 0,
-    "total_estimated_hours": 0,
-    "rest_stops_recommended": 0
-  }
-}
-EOF
-}
-
-# Generate JSON structure
-generate_json() {
-    local input_data="$1"
-    
-    # Get timestamp
-    local timestamp
-    timestamp=$(print_json_timestamp)
-    
-    # Extract trip info if JSON input provided
-    local trip_name="旅遊行程"
-    local days=1
-    local date=""
-    
-    if command -v jq &> /dev/null && [[ "$input_data" != "{}" ]]; then
-        trip_name=$(echo "$input_data" | jq -r '.trip.name // "旅遊行程"')
-        days=$(echo "$input_data" | jq -r '.trip.days // 1')
-        date=$(echo "$input_data" | jq -r '.trip.date // ""')
-    fi
-    
-    # Build the JSON structure
-    cat << EOF
-{
-  "meta": {
-    "generated_at": "$timestamp",
-    "generator": "travel-plan-agent",
-    "version": "1.0.0"
-  },
-  "trip": {
-    "name": "$trip_name",
-    "duration_days": $days,
-    "date": "$date",
-    "starting_point": "",
-    "transportation": ""
-  },
-  "itinerary": [
-    {
-      "day": 1,
-      "date": "",
-      "segments": [
-        {
-          "time": "09:00",
-          "type": "attraction",
-          "name": "景點名稱",
-          "address": "地址",
-          "duration_minutes": 120,
-          "notes": "參觀說明"
-        },
-        {
-          "time": "12:00",
-          "type": "break",
-          "name": "休息站/餐廳",
-          "address": "",
-          "duration_minutes": 60,
-          "notes": "午餐建議"
-        },
-        {
-          "time": "14:00",
-          "type": "attraction",
-          "name": "景點名稱",
-          "address": "地址",
-          "duration_minutes": 120,
-          "notes": "參觀說明"
-        }
-      ],
-      "travel_notes": "交通說明"
-    }
-  ],
-  "summary": {
-    "total_attractions": 2,
-    "total_estimated_hours": 6,
-    "rest_stops_recommended": 1,
-    "notes": [
-      "出發前請確認景點開放時間",
-      "建議提早出發以避開人潮"
-    ]
-  }
-}
-EOF
-}
-
-# Usage information
 usage() {
     echo "Usage: $0 [input.json] [output.json]"
     echo ""
     echo "Arguments:"
-    echo "  input.json   Input JSON file (default: stdin)"
-    echo "  output.json  Output JSON file (default: stdout)"
+    echo "  input.json   Itinerary JSON file (default: stdin)"
+    echo "  output.json  Normalized JSON file (default: stdout)"
     echo ""
-    echo "Input JSON format:"
-    echo '  {'
-    echo '    "trip": {'
-    echo '      "name": "行程名稱",'
-    echo '      "days": 3,'
-    echo '      "date": "2026-01-25"'
-    echo '    }'
-    echo '  }'
-    echo ""
-    echo "Output JSON Schema:"
-    echo "  - meta: Generation metadata"
-    echo "  - trip: Basic trip information"
-    echo "  - itinerary: Array of daily itineraries"
-    echo "  - summary: Trip summary statistics"
+    echo "What it does:"
+    echo "  - Fills meta (generated_at, generator, version), day numbers, traveler colors"
+    echo "  - Computes summary counts unless provided"
+    echo "  - Prints warnings to stderr; exit code stays 0 so drafts can still be rendered"
     echo ""
     echo "Examples:"
-    echo "  $0 itinerary.json plan.json"
-    echo "  cat itinerary.json | $0 > plan.json"
+    echo "  $0 draft.json itinerary.json"
+    echo "  cat draft.json | $0 > itinerary.json"
 }
 
-# Main execution
 main() {
-    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
         exit 0
     fi
-    
-    # Read input
+
+    require_jq
+
     local input_data
-    if [[ -p "/dev/stdin" ]] || [[ "$INPUT_FILE" != "/dev/stdin" && -f "$INPUT_FILE" ]]; then
-        input_data=$(cat "$INPUT_FILE")
-    else
-        input_data='{}'
+    input_data=$(read_input "$INPUT_FILE")
+
+    local warnings
+    warnings=$(printf '%s' "$input_data" | itinerary_jq -r 'include "itinerary"; lint[]')
+    if [[ -n "$warnings" ]]; then
+        while IFS= read -r line; do
+            warn "$line"
+        done <<< "$warnings"
     fi
-    
-    generate_json "$input_data"
+
+    local pending
+    pending=$(printf '%s' "$input_data" | itinerary_jq 'include "itinerary"; to_verify_count')
+    if [[ "$pending" -gt 0 ]]; then
+        echo "Note: $pending item(s) marked to_verify" >&2
+    fi
+
+    printf '%s' "$input_data" \
+        | itinerary_jq 'include "itinerary"; normalize | .meta.generated_at = (now | todate) | .summary = summarize' \
+        > "$OUTPUT_FILE"
 }
 
 main "$@"

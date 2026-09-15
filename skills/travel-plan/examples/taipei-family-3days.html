@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FF6B6B">
+    <title>台北親子三日遊（虛構範例）</title>
+    <script>document.documentElement.classList.add('js');</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap">
+    <style>
+/* Travel Plan - Vibrant Mobile Styles */
+
+/* CSS Variables - Vibrant Color Scheme */
+:root {
+    --primary: #FF6B6B;
+    --primary-dark: #E85555;
+    --primary-light: #FF8A8A;
+    --secondary: #4ECDC4;
+    --secondary-dark: #2BA89F;
+    --accent: #FFE66D;
+    --background: #F7FFF7;
+    --surface: #FFFFFF;
+    --surface-alt: #F4F7F8;
+    --text-dark: #2C3E50;
+    --text-medium: #4F5F6F;
+    --text-light: #7B8A96;
+    --border: #E3E9EB;
+    --shadow: rgba(44, 62, 80, 0.1);
+    --success: #1E9E57;
+    --success-bg: #E8F7EE;
+    --warning: #D97706;
+    --warning-bg: #FFF7E0;
+    --info-bg: #EAF6FF;
+
+    /* Departure board */
+    --board-bg: #0B0F17;
+    --board-border: #1F2937;
+    --board-text: #FBBF24;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+    /* Traveler colors */
+    --member-rose: #DB2777;
+    --member-rose-bg: #FCE7F3;
+    --member-blue: #2563EB;
+    --member-blue-bg: #DBEAFE;
+    --member-cyan: #0E7490;
+    --member-cyan-bg: #CFFAFE;
+    --member-violet: #7C3AED;
+    --member-violet-bg: #EDE9FE;
+    --member-amber: #B45309;
+    --member-amber-bg: #FEF3C7;
+    --member-green: #15803D;
+    --member-green-bg: #DCFCE7;
+    --member-orange: #C2410C;
+    --member-orange-bg: #FFEDD5;
+    --member-slate: #475569;
+    --member-slate-bg: #E2E8F0;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #FF6B6B 0%, #FF8A8A 100%);
+    --gradient-secondary: linear-gradient(135deg, #2BA89F 0%, #4ECDC4 100%);
+}
+
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 19px;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    background-color: var(--background);
+    color: var(--text-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Typography: body 19px, headings 21-30px */
+h1 {
+    font-size: 1.58rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #FFFFFF;
+}
+
+h2 {
+    font-size: 1.26rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-dark);
+}
+
+h3 {
+    font-size: 1.11rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-dark);
+}
+
+p {
+    color: var(--text-medium);
+}
+
+a {
+    color: inherit;
+}
+
+/* Header */
+.trip-header {
+    background: var(--gradient-primary);
+    padding: calc(1.1rem + env(safe-area-inset-top, 0px)) 0.85rem 1.1rem;
+}
+
+.header-content {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.trip-meta {
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+}
+
+.legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+}
+
+.legend .member-chip {
+    background: rgba(255, 255, 255, 0.92);
+}
+
+/* Sticky navigation: day tabs + sunny/rain toggle */
+.trip-nav {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 16px var(--shadow);
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+.js .trip-nav {
+    display: block;
+}
+
+.nav-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0.5rem 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.day-tabs {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1 1 100%;
+}
+
+.day-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.day-tab {
+    flex: 1 0 auto;
+    min-height: 48px;
+    padding: 0.35rem 0.5rem;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-alt);
+    color: var(--text-medium);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-tab small {
+    font-size: 0.74rem;
+    font-weight: 500;
+}
+
+.day-tab[aria-selected="true"] {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #FFFFFF;
+}
+
+.plan-toggle {
+    display: flex;
+    flex: 1 1 100%;
+    background: var(--surface-alt);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 3px;
+}
+
+.plan-btn {
+    flex: 1;
+    min-height: 44px;
+    border: none;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-medium);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.plan-btn[aria-pressed="true"][data-plan="sun"] {
+    background: var(--accent);
+    color: var(--text-dark);
+}
+
+.plan-btn[aria-pressed="true"][data-plan="rain"] {
+    background: #3B5B8C;
+    color: #FFFFFF;
+}
+
+@media (min-width: 720px) {
+    .day-tabs {
+        flex: 1 1 auto;
+    }
+
+    .plan-toggle {
+        flex: 0 0 18rem;
+    }
+}
+
+/* Container */
+.container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0.85rem 0.85rem 5rem;
+}
+
+/* Day panels: all visible without JS, one at a time with JS */
+.day-panel {
+    margin-bottom: 1.5rem;
+    scroll-margin-top: 8rem;
+}
+
+.js .day-panel:not(.is-active) {
+    display: none;
+}
+
+.day-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: 0.4rem 0 0.9rem;
+}
+
+.day-badge {
+    background: var(--gradient-secondary);
+    color: #FFFFFF;
+    padding: 0.2rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.day-date {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+/* Board-style times */
+.board-time {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    color: var(--board-text);
+    background: var(--board-bg);
+    border: 1px solid var(--board-border);
+    border-radius: 8px;
+    padding: 0.2em 0.5em;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Weather & callouts */
+.weather {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    background: var(--info-bg);
+    border-radius: 14px;
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-dark);
+}
+
+.weather-summary {
+    font-weight: 700;
+}
+
+.weather small {
+    flex-basis: 100%;
+    font-size: 0.84rem;
+    color: var(--text-medium);
+}
+
+.callout {
+    border-radius: 14px;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 0.75rem;
+    border-left: 6px solid;
+}
+
+.callout p {
+    color: var(--text-dark);
+}
+
+.callout-title {
+    display: block;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+}
+
+.callout-fix {
+    background: var(--success-bg);
+    border-color: var(--success);
+}
+
+.callout-fix .callout-title {
+    color: var(--success);
+}
+
+.callout-time {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+}
+
+.callout-time .callout-title {
+    color: var(--warning);
+}
+
+/* Segment cards: time on top, full width */
+.segment {
+    background: var(--surface);
+    border-radius: 16px;
+    border-left: 6px solid var(--secondary);
+    box-shadow: 0 2px 12px var(--shadow);
+    padding: 0.9rem;
+    margin-bottom: 0.85rem;
+}
+
+.segment.afternoon {
+    border-left-color: var(--accent);
+}
+
+.segment.evening {
+    border-left-color: var(--primary);
+}
+
+.segment.break {
+    border-left-color: var(--warning);
+}
+
+.plan + .plan {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 2px dashed var(--border);
+}
+
+.js .plan + .plan {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.js:not([data-plan="rain"]) .plan-rain,
+.js[data-plan="rain"] .has-rain > .plan-sun {
+    display: none;
+}
+
+.segment-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    margin-bottom: 0.45rem;
+}
+
+.segment h3 {
+    margin-bottom: 0.35rem;
+}
+
+.segment .notes {
+    color: var(--text-dark);
+    margin-bottom: 0.35rem;
+}
+
+.duration {
+    font-size: 0.84rem;
+    color: var(--text-medium);
+}
+
+.spot-tag,
+.badge {
+    display: inline-block;
+    padding: 0.1rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.tag-attraction {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.tag-break {
+    background: #FFF3E0;
+    color: #B84A00;
+}
+
+.tag-meal {
+    background: #FCE4EC;
+    color: #B0154F;
+}
+
+.tag-travel {
+    background: #E0F7F5;
+    color: #00695F;
+}
+
+.tag-optional {
+    background: #EDE7F6;
+    color: #5E35B1;
+}
+
+.badge-rain {
+    background: #E6EEF8;
+    color: #3B5B8C;
+}
+
+.badge-rain-on {
+    background: #3B5B8C;
+    color: #FFFFFF;
+}
+
+.tips {
+    list-style: none;
+    margin: 0.2rem 0 0.4rem;
+}
+
+.tips li {
+    position: relative;
+    padding-left: 1.2rem;
+    color: var(--text-medium);
+}
+
+.tips li::before {
+    content: '•';
+    position: absolute;
+    left: 0.2rem;
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Transit */
+.transit {
+    background: var(--surface-alt);
+    border-radius: 12px;
+    padding: 0.55rem 0.75rem;
+    margin: 0.35rem 0 0.5rem;
+}
+
+.transit-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.45rem;
+}
+
+.transit-mode {
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.transit p {
+    margin-top: 0.25rem;
+}
+
+.call-at {
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.line {
+    display: inline-block;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    background: var(--text-light);
+}
+
+.line-BL { background: #0070BD; }
+.line-R { background: #E3002C; }
+.line-G { background: #008659; }
+.line-O { background: #F8B61C; color: #2C3E50; }
+.line-BR { background: #C48C31; }
+.line-Y { background: #FFDB00; color: #2C3E50; }
+.line-A { background: #8246AF; }
+.line-V, .line-K { background: #D90023; }
+
+.buffer {
+    font-size: 0.9rem;
+    color: var(--warning);
+    margin: 0.3rem 0;
+}
+
+.verify {
+    font-size: 0.9rem;
+    background: var(--warning-bg);
+    color: #92400E;
+    border-radius: 10px;
+    padding: 0.4rem 0.6rem;
+    margin: 0.4rem 0;
+}
+
+.plan-reason {
+    font-size: 0.9rem;
+    color: #3B5B8C;
+    margin: 0.4rem 0;
+}
+
+/* Traveler chips & highlights */
+.member-chip {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    white-space: nowrap;
+    color: var(--member, var(--text-dark));
+    background: var(--member-bg, var(--surface-alt));
+}
+
+.member-rose { --member: var(--member-rose); --member-bg: var(--member-rose-bg); }
+.member-blue { --member: var(--member-blue); --member-bg: var(--member-blue-bg); }
+.member-cyan { --member: var(--member-cyan); --member-bg: var(--member-cyan-bg); }
+.member-violet { --member: var(--member-violet); --member-bg: var(--member-violet-bg); }
+.member-amber { --member: var(--member-amber); --member-bg: var(--member-amber-bg); }
+.member-green { --member: var(--member-green); --member-bg: var(--member-green-bg); }
+.member-orange { --member: var(--member-orange); --member-bg: var(--member-orange-bg); }
+.member-slate { --member: var(--member-slate); --member-bg: var(--member-slate-bg); }
+
+.highlights {
+    list-style: none;
+    margin: 0.5rem 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.highlights li {
+    border-left: 4px solid var(--member, var(--border));
+    padding-left: 0.55rem;
+    color: var(--text-dark);
+}
+
+.highlights .member-chip {
+    margin-right: 0.35rem;
+}
+
+/* Map & source links */
+.links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+}
+
+.map-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 0.3rem 1rem;
+    border-radius: 999px;
+    background: var(--secondary-dark);
+    color: #FFFFFF;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.map-btn-route {
+    background: #3B5B8C;
+}
+
+.source-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    border: 2px solid var(--border);
+    color: var(--text-medium);
+    font-size: 0.84rem;
+    text-decoration: none;
+}
+
+.travel-time {
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    background: rgba(78, 205, 196, 0.12);
+    border-radius: 10px;
+    padding: 0.45rem 0.7rem;
+}
+
+/* Info tab */
+.info-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 0.9rem;
+    box-shadow: 0 2px 12px var(--shadow);
+}
+
+.info-card > h2 {
+    margin-bottom: 0.6rem;
+}
+
+.traveler-list,
+.constraint-list {
+    list-style: none;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.traveler-list li {
+    border-left: 4px solid var(--member, var(--border));
+    padding-left: 0.6rem;
+}
+
+.traveler-list p {
+    color: var(--text-dark);
+}
+
+.constraint-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+    color: var(--text-dark);
+}
+
+.lodging + .lodging {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+}
+
+.lodging p,
+.lodging li {
+    color: var(--text-dark);
+}
+
+.lodging ul {
+    margin: 0.3rem 0 0 1.2rem;
+}
+
+.tips-list {
+    list-style: none;
+}
+
+.tips-list li {
+    position: relative;
+    padding-left: 1.3rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-dark);
+}
+
+.tips-list li::before {
+    content: '💡';
+    position: absolute;
+    left: 0;
+    font-size: 0.8rem;
+    top: 0.2rem;
+}
+
+/* Actions Section */
+.actions-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+/* Buttons */
+.btn {
+    flex: 1 1 12rem;
+    min-height: 52px;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: #FFFFFF;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--primary-dark);
+    border: 2px solid var(--primary);
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 1.5rem 0.85rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    color: var(--text-light);
+    font-size: 0.84rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.footer p {
+    color: inherit;
+}
+
+/* Print Styles: every day and both plans */
+@media print {
+    html {
+        font-size: 13px;
+    }
+
+    .trip-header {
+        background: var(--text-dark) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .js .day-panel,
+    .js .plan {
+        display: block !important;
+    }
+
+    .trip-nav,
+    .actions-section,
+    .footer,
+    .links {
+        display: none !important;
+    }
+
+    .segment,
+    .info-card {
+        break-inside: avoid;
+        box-shadow: none;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #111827;
+        --surface: #1B2436;
+        --surface-alt: #243049;
+        --text-dark: #E8EEEF;
+        --text-medium: #B4BFCB;
+        --text-light: #8190A0;
+        --border: #33405A;
+        --shadow: rgba(0, 0, 0, 0.35);
+        --success-bg: rgba(30, 158, 87, 0.18);
+        --warning-bg: rgba(217, 119, 6, 0.18);
+        --info-bg: rgba(59, 130, 246, 0.16);
+        --member-rose: #F472B6;
+        --member-rose-bg: rgba(244, 114, 182, 0.18);
+        --member-blue: #60A5FA;
+        --member-blue-bg: rgba(96, 165, 250, 0.18);
+        --member-cyan: #22D3EE;
+        --member-cyan-bg: rgba(34, 211, 238, 0.16);
+        --member-violet: #A78BFA;
+        --member-violet-bg: rgba(167, 139, 250, 0.18);
+        --member-amber: #FBBF24;
+        --member-amber-bg: rgba(251, 191, 36, 0.16);
+        --member-green: #4ADE80;
+        --member-green-bg: rgba(74, 222, 128, 0.16);
+        --member-orange: #FB923C;
+        --member-orange-bg: rgba(251, 146, 60, 0.16);
+        --member-slate: #CBD5E1;
+        --member-slate-bg: rgba(203, 213, 225, 0.14);
+    }
+
+    .verify {
+        color: #FCD34D;
+    }
+
+    .plan-reason,
+    .badge-rain {
+        color: #93C5FD;
+    }
+
+    .badge-rain {
+        background: rgba(147, 197, 253, 0.16);
+    }
+
+    .legend .member-chip {
+        background: rgba(17, 24, 39, 0.75);
+    }
+
+    .tag-attraction { background: rgba(46, 125, 50, 0.25); color: #86EFAC; }
+    .tag-break { background: rgba(184, 74, 0, 0.25); color: #FDBA74; }
+    .tag-meal { background: rgba(176, 21, 79, 0.25); color: #F9A8D4; }
+    .tag-travel { background: rgba(0, 105, 95, 0.3); color: #5EEAD4; }
+    .tag-optional { background: rgba(94, 53, 177, 0.3); color: #C4B5FD; }
+}
+
+    </style>
+</head>
+<body>
+    <header class="trip-header">
+        <div class="header-content">
+            <h1>台北親子三日遊（虛構範例）</h1>
+            <p class="trip-meta">3天 · 10/14（三） · 台中出發 · 自駕＋捷運</p>
+            <ul class="legend"><li class="member-violet"><span class="member-chip">👩 媽媽</span></li><li class="member-amber"><span class="member-chip">👨 爸爸</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span></li></ul>
+        </div>
+    </header>
+
+    <nav class="trip-nav" aria-label="行程導覽">
+        <div class="nav-inner">
+            <div class="day-tabs" role="tablist">
+                <button type="button" class="day-tab" role="tab" id="tab-day-1" data-target="day-1" aria-controls="day-1"><span>Day 1</span><small>10/14 三</small></button>
+<button type="button" class="day-tab" role="tab" id="tab-day-2" data-target="day-2" aria-controls="day-2"><span>Day 2</span><small>10/15 四</small></button>
+<button type="button" class="day-tab" role="tab" id="tab-day-3" data-target="day-3" aria-controls="day-3"><span>Day 3</span><small>10/16 五</small></button>
+<button type="button" class="day-tab" role="tab" id="tab-info" data-target="info" aria-controls="info"><span>須知</span><small>住宿・提醒</small></button>
+            </div>
+            <div class="plan-toggle" role="group" aria-label="晴天或雨備方案"><button type="button" class="plan-btn" data-plan="sun" aria-pressed="true">☀️ 晴天</button><button type="button" class="plan-btn" data-plan="rain" aria-pressed="false">⛈️ 雨備</button></div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="day-panel" id="day-1" role="tabpanel" aria-labelledby="tab-day-1">
+<div class="day-header"><span class="day-badge">Day 1</span><h2 class="day-title">北上與台北 101</h2><span class="day-date">10/14（三）</span></div>
+<div class="weather"><span class="weather-summary">🌦️ 多雲，午後短暫陣雨</span><span>24–29°C</span><span>降雨 30%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
+<div class="callout callout-time"><span class="callout-title">⏰ 固定時間</span><p><span class="board-time">09:00</span> 後出發｜爸爸上午有線上會議，結束後才能出發</p></div>
+<article class="segment morning">
+<div class="segment-head"><span class="board-time">09:00</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 1 小時 15 分</span></div>
+<h3>台中出發，國道 1 號北上</h3>
+<p class="notes">爸爸開車，其他人可以在車上休息。</p>
+<ul class="tips"><li>想避開大貨車可改走國道 3 號，但距離較長；出發前用導航比較兩條路線的實際時間再決定</li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E4%B8%AD%E5%87%BA%E7%99%BC%EF%BC%8C%E5%9C%8B%E9%81%93%201%20%E8%99%9F%E5%8C%97%E4%B8%8A" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment break">
+<div class="segment-head"><span class="board-time">10:15</span><span class="spot-tag tag-break">休息</span><span class="duration">約 20 分鐘</span></div>
+<h3>湖口服務區</h3>
+<p class="notes">上廁所、買飲料、伸展一下。</p>
+<ul class="highlights"><li class="member-amber"><span class="member-chip">👨 爸爸</span><span>開了一個多小時，下車走一走再上路</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>買點心</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment morning">
+<div class="segment-head"><span class="board-time">11:45</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
+<h3>旅店停車、寄放行李</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 10 分</span></div><p>下交流道後直接開到旅店，車停好之後三天市區都不開車</p></div>
+<p class="buffer">⏳ 已預留 15 分鐘排隊／等候：進停車場與辦理寄放</p>
+<p class="verify">⚠️ 待確認：入住前能否先停車與寄放行李，出發前一天打電話給旅店確認</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a><a class="map-btn map-btn-route" href="https://www.google.com/maps/dir/?api=1&amp;origin=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80&amp;destination=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99&amp;travelmode=driving" target="_blank" rel="noopener">🧭 路線導航</a></div>
+</article>
+<article class="segment break">
+<div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 50 分鐘</span></div>
+<h3>台北 101 購物中心美食街午餐</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 25 分鐘</span></div><p>臺北車站搭淡水信義線往象山方向，台北101/世貿站下車</p></div>
+<p class="buffer">⏳ 已預留 15 分鐘排隊／等候：中午用餐尖峰找座位</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>先找有座位的區域，媽媽坐著等，其他人去買</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97101%E8%B3%BC%E7%89%A9%E4%B8%AD%E5%BF%83" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment afternoon">
+<div class="segment-head"><span class="board-time">13:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span></div>
+<h3>台北 101 觀景台</h3>
+<p class="notes">看完直接在樓下叫車前往下一站。</p>
+<p class="buffer">⏳ 已預留 30 分鐘排隊／等候：買票與上下樓電梯排隊；事先線上購票可縮短</p>
+<ul class="highlights"><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>高樓層窗景拍照</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>看風阻尼器，了解高樓怎麼防風防震</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>阻尼器寶寶吉祥物合照、挑紀念品</span></li></ul>
+<p class="verify">⚠️ 待確認：票價、營業時間與線上購票方式以官網公告為準</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97101%E8%A7%80%E6%99%AF%E5%8F%B0" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.taipei-101.com.tw/" target="_blank" rel="noopener">🔗 台北101 官方網站</a></div>
+</article>
+<article class="segment afternoon has-rain">
+<div class="plan plan-sun">
+<div class="segment-head"><span class="board-time">15:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span><span class="badge badge-rain">有雨備</span></div>
+<h3>臺北市兒童新樂園</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚕 叫車</span><span class="duration">約 30 分鐘</span></div><p>5 人請用 App 叫 6 人座車；一般計程車載客上限 4 人</p><p class="call-at">🚕 <span class="board-time">15:20</span> 叫車</p></div>
+<p class="notes">戶外遊樂設施為主，天氣好時玩到閉園前。</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>園內找有遮蔭的座位休息</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>刺激一點的設施</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>摩天輪、旋轉木馬</span></li></ul>
+<p class="verify">⚠️ 待確認：平日閉園時間與設施是否因天候暫停，以官網公告為準</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E5%B8%82%E5%85%92%E7%AB%A5%E6%96%B0%E6%A8%82%E5%9C%92" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.tcap.taipei/" target="_blank" rel="noopener">🔗 臺北市兒童新樂園</a></div>
+</div>
+<div class="plan plan-rain">
+<div class="segment-head"><span class="board-time">15:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span><span class="badge badge-rain-on">⛈️ 雨備</span></div>
+<h3>國立臺灣科學教育館＋臺北市立天文科學教育館</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚕 叫車</span><span class="duration">約 30 分鐘</span></div><p>兩館在兒童新樂園附近，同樣叫 6 人座車直達</p><p class="call-at">🚕 <span class="board-time">15:20</span> 叫車</p></div>
+<p class="notes">全室內，展區有很多可以動手玩的互動裝置。</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>館內有冷氣和座位，隨時可以休息</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>科教館動手做實驗</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>天文館的太空展區</span></li></ul>
+<p class="verify">⚠️ 待確認：兩館休館日、票價與特展檔期以官網為準</p>
+<p class="plan-reason">💡 切換原因：午後陣雨時戶外遊樂設施可能暫停，改去附近的室內館</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E7%A7%91%E5%AD%B8%E6%95%99%E8%82%B2%E9%A4%A8" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntsec.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣科學教育館</a><a class="source-link" href="https://www.tam.gov.taipei/" target="_blank" rel="noopener">🔗 臺北市立天文科學教育館</a></div>
+</div>
+</article>
+<article class="segment break has-rain">
+<div class="plan plan-sun">
+<div class="segment-head"><span class="board-time">17:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時 15 分</span><span class="badge badge-rain">有雨備</span></div>
+<h3>士林夜市晚餐</h3>
+<p class="notes">人多時分兩組排隊，媽媽和妹妹先找地方坐。</p>
+<p class="buffer">⏳ 已預留 15 分鐘排隊／等候：熱門攤位排隊</p>
+<ul class="highlights"><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>逛飾品小店</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>夜市小遊戲</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A3%AB%E6%9E%97%E5%A4%9C%E5%B8%82" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+<div class="plan plan-rain">
+<div class="segment-head"><span class="board-time">17:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時</span><span class="badge badge-rain-on">⛈️ 雨備</span></div>
+<h3>臺北車站周邊室內美食街</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>劍潭站搭淡水信義線到臺北車站</p></div>
+<p class="notes">吃完直接走回旅店，不用撐傘逛夜市。</p>
+<p class="plan-reason">💡 切換原因：雨大時戶外夜市擁擠又濕滑</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+</article>
+<article class="segment evening">
+<div class="segment-head"><span class="board-time">19:15</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
+<h3>回旅店辦理入住</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>劍潭站搭淡水信義線到臺北車站</p></div>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<p class="travel-time">🚗 自駕只用在台中—台北往返，市區移動全部改搭捷運或叫車。</p>
+</section>
+
+<section class="day-panel" id="day-2" role="tabpanel" aria-labelledby="tab-day-2">
+<div class="day-header"><span class="day-badge">Day 2</span><h2 class="day-title">動物園上午場與室內下午</h2><span class="day-date">10/15（四）</span></div>
+<div class="weather"><span class="weather-summary">🌦️ 午後雷陣雨</span><span>23–28°C</span><span>降雨 60%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
+<div class="callout callout-fix"><span class="callout-title">✅ 修正</span><p><strong>動物園改成上午場、下午全走室內</strong></p><p>週四午後降雨機率較高，12:00 前離園；出門時已經下大雨就直接改去鐵道部園區。</p></div>
+<article class="segment morning has-rain">
+<div class="plan plan-sun">
+<div class="segment-head"><span class="board-time">09:00</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 3 小時</span><span class="badge badge-rain">有雨備</span></div>
+<h3>臺北市立動物園</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚕 叫車</span><span class="duration">約 30 分鐘</span></div><p>叫 6 人座車直達正門，雨天不用走戶外路段</p><p class="call-at">🚕 <span class="board-time">08:25</span> 叫車</p></div>
+<p class="notes">12:00 前離園，避開午後雷陣雨。</p>
+<ul class="tips"><li>先搭園內遊園列車上坡，再一路往下坡走回大門，比較省力</li><li>企鵝館、大貓熊館、兩棲爬蟲動物館都是室內館，可以當休息點</li></ul>
+<p class="buffer">⏳ 已預留 20 分鐘排隊／等候：入園與園內遊園列車排隊</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>每走一段就進室內館坐下休息，不要硬撐</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>無尾熊館拍照</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>兩棲爬蟲動物館</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>企鵝館、大貓熊館</span></li></ul>
+<p class="verify">⚠️ 待確認：遊園列車班次與票價、各館是否整修，以官網公告為準</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E5%B8%82%E7%AB%8B%E5%8B%95%E7%89%A9%E5%9C%92" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.zoo.gov.taipei/" target="_blank" rel="noopener">🔗 臺北市立動物園</a></div>
+</div>
+<div class="plan plan-rain">
+<div class="segment-head"><span class="board-time">09:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時 30 分</span><span class="badge badge-rain-on">⛈️ 雨備</span></div>
+<h3>國立臺灣博物館 鐵道部園區</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚶 步行</span><span class="duration">約 15 分鐘</span></div><p>從臺北車站經地下街往北門方向步行</p></div>
+<p class="notes">展區以室內為主，走動距離短、地面平坦。</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>全程室內，體力負擔小</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>紅磚古蹟建築拍照</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>鐵道模型與火車展示</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>收集紀念章</span></li></ul>
+<p class="verify">⚠️ 待確認：開放時間、休館日與票價以官網為準</p>
+<p class="plan-reason">💡 切換原因：出門時已經下大雨的話，動物園戶外路段濕滑又耗體力</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E5%8D%9A%E7%89%A9%E9%A4%A8%E9%90%B5%E9%81%93%E9%83%A8%E5%9C%92%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntm.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣博物館</a></div>
+</div>
+</article>
+<article class="segment break has-rain">
+<div class="plan plan-sun">
+<div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時</span><span class="badge badge-rain">有雨備</span></div>
+<h3>臺北車站周邊午餐</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚕 叫車</span><span class="duration">約 30 分鐘</span></div><p>在動物園出口前先叫車，走到大門剛好上車</p><p class="call-at">🚕 <span class="board-time">12:00</span> 叫車</p></div>
+<p class="buffer">⏳ 已預留 15 分鐘排隊／等候：尖峰找座位</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+<div class="plan plan-rain">
+<div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時</span><span class="badge badge-rain-on">⛈️ 雨備</span></div>
+<h3>臺北車站周邊午餐</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚶 步行</span><span class="duration">約 15 分鐘</span></div><p>從鐵道部園區步行回臺北車站</p></div>
+<p class="plan-reason">💡 切換原因：雨備行程就在附近，走地下街過來即可</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+</article>
+<article class="segment afternoon">
+<div class="segment-head"><span class="board-time">13:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時</span></div>
+<h3>台北地下街</h3>
+<p class="notes">動漫周邊、模型與扭蛋店集中，全程在地下街不怕下雨。</p>
+<ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>逛累了先回旅店休息，步行就到</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>動漫周邊</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>模型與遊戲店</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>整排扭蛋機</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97%E5%9C%B0%E4%B8%8B%E8%A1%97" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment afternoon has-rain">
+<div class="plan plan-sun">
+<div class="segment-head"><span class="board-time">15:45</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時</span><span class="badge badge-rain">有雨備</span></div>
+<h3>西門町</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-BL">板南線</span><span class="duration">約 15 分鐘</span></div><p>臺北車站搭板南線到西門站</p></div>
+<p class="notes">街上動漫周邊店與小吃多，傍晚人潮開始變多。</p>
+<ul class="highlights"><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>動漫周邊店</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>街頭小吃</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%A5%BF%E9%96%80%E7%94%BA" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+<div class="plan plan-rain">
+<div class="segment-head"><span class="board-time">15:45</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時</span><span class="badge badge-rain-on">⛈️ 雨備</span></div>
+<h3>萬年商業大樓</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-BL">板南線</span><span class="duration">約 15 分鐘</span></div><p>臺北車站搭板南線到西門站，出站步行幾分鐘</p></div>
+<p class="notes">室內模型、公仔與電玩店聚集。</p>
+<ul class="highlights"><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>動漫周邊</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>模型與公仔</span></li></ul>
+<p class="plan-reason">💡 切換原因：雨大時留在室內逛，不用在徒步區撐傘</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%90%AC%E5%B9%B4%E5%95%86%E6%A5%AD%E5%A4%A7%E6%A8%93" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</div>
+</article>
+<article class="segment break">
+<div class="segment-head"><span class="board-time">18:00</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時 15 分</span></div>
+<h3>西門町晚餐</h3>
+<p class="buffer">⏳ 已預留 20 分鐘排隊／等候：熱門店家先抽號碼牌再逛</p>
+<ul class="highlights"><li class="member-amber"><span class="member-chip">👨 爸爸</span><span>先確認店家有沒有 5 人座位</span></li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%A5%BF%E9%96%80%E7%94%BA" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment evening">
+<div class="segment-head"><span class="board-time">19:30</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 15 分鐘</span></div>
+<h3>搭捷運回旅店</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-BL">板南線</span><span class="duration">約 15 分鐘</span></div><p>西門站搭板南線到臺北車站</p></div>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+</section>
+
+<section class="day-panel" id="day-3" role="tabpanel" aria-labelledby="tab-day-3">
+<div class="day-header"><span class="day-badge">Day 3</span><h2 class="day-title">恐龍化石與提早南下</h2><span class="day-date">10/16（五）</span></div>
+<div class="weather"><span class="weather-summary">🌦️ 多雲時晴</span><span>23–29°C</span><span>降雨 20%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
+<div class="callout callout-fix"><span class="callout-title">✅ 修正</span><p><strong>最後一天提早南下</strong></p><p>原本 14:00 才離開台北，遇上週五塞車可能趕不上 17:30；改成上午只排一個室內點，11:15 出發。</p></div>
+<div class="callout callout-time"><span class="callout-title">⏰ 固定時間</span><p><span class="board-time">17:30</span> 前抵達｜妹妹 18:00 有才藝課，要先回到台中家</p></div>
+<article class="segment morning">
+<div class="segment-head"><span class="board-time">08:45</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
+<h3>退房、行李放上車</h3>
+<p class="notes">車先留在旅店停車場，人輕裝出門。</p>
+<p class="buffer">⏳ 已預留 15 分鐘排隊／等候：退房排隊</p>
+<p class="verify">⚠️ 待確認：退房後能否繼續停車到中午，入住時先問旅店</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment morning">
+<div class="segment-head"><span class="board-time">09:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span></div>
+<h3>國立臺灣博物館 土銀展示館</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>臺北車站搭淡水信義線到台大醫院站，出站步行約 5 分鐘</p></div>
+<p class="notes">全室內展館，不受天氣影響。</p>
+<ul class="highlights"><li class="member-amber"><span class="member-chip">👨 爸爸</span><span>看老銀行建築</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>古蹟建築拍照</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>大型恐龍骨骼化石</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>走進舊銀行金庫</span></li></ul>
+<p class="verify">⚠️ 待確認：開館時間、休館日與票價以官網為準</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E5%8D%9A%E7%89%A9%E9%A4%A8%E5%9C%9F%E9%8A%80%E5%B1%95%E7%A4%BA%E9%A4%A8" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntm.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣博物館</a></div>
+</article>
+<article class="segment morning">
+<div class="segment-head"><span class="board-time">11:15</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 15 分鐘</span></div>
+<h3>回旅店取車，國道 1 號南下</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>台大醫院站搭淡水信義線回臺北車站</p></div>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<article class="segment break">
+<div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 50 分鐘</span></div>
+<h3>湖口服務區午餐</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 10 分</span></div></div>
+<ul class="tips"><li>北部路段塞車的話，改到下一個服務區吃，不要為了吃飯繞路</li></ul>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a><a class="map-btn map-btn-route" href="https://www.google.com/maps/dir/?api=1&amp;origin=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99&amp;destination=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80&amp;travelmode=driving" target="_blank" rel="noopener">🧭 路線導航</a></div>
+</article>
+<article class="segment afternoon">
+<div class="segment-head"><span class="board-time">15:00</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
+<h3>回到台中家</h3>
+<div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 30 分</span></div></div>
+<p class="notes">距離 17:30 截止時間還有 2.5 小時緩衝，就算塞車也來得及。</p>
+<div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9B%9E%E5%88%B0%E5%8F%B0%E4%B8%AD%E5%AE%B6" target="_blank" rel="noopener">📍 Google Maps</a></div>
+</article>
+<p class="travel-time">🚗 上午只排一個室內點，11:15 前一定要出發。</p>
+</section>
+
+        <section class="day-panel info-panel" id="info" role="tabpanel" aria-labelledby="tab-info">
+            <div class="day-header">
+                <span class="day-badge">須知</span>
+                <h2 class="day-title">行前須知</h2>
+            </div>
+            <div class="callout callout-fix"><span class="callout-title">✅ 修正</span><p><strong>要買票的景點都補上排隊緩衝</strong></p><p>101 觀景台、動物園、晚餐熱門店都已預留排隊與等候時間。</p></div>
+<section class="info-card"><h2>👨‍👩‍👧 同行成員</h2><ul class="traveler-list"><li class="member-violet"><span class="member-chip">👩 媽媽</span><p>大人</p><p>興趣：咖啡廳、拍照</p><p>需要留意：怕悶熱、走一段就要坐下休息</p></li><li class="member-amber"><span class="member-chip">👨 爸爸</span><p>大人・駕駛</p><p>興趣：建築、美食</p><p>需要留意：長途開車中途要休息</p></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><p>國二</p><p>興趣：動漫周邊、拍照打卡</p></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><p>小五</p><p>興趣：火車、恐龍、模型</p></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><p>小一</p><p>興趣：動物、太空、扭蛋</p><p>需要留意：午後容易累</p></li></ul></section>
+<section class="info-card"><h2>🏨 住宿</h2><article class="lodging"><h3>示範旅店（虛構）</h3><p>第 1、2 晚</p><p>入住 <span class="board-time">15:00</span>　退房 <span class="board-time">11:00</span></p><p>📍 臺北車站周邊</p><p>🅿️ 附設停車場，住宿期間車停旅店，市區改搭捷運或叫車</p><ul><li>入住前可先寄放行李（需向旅店確認）</li><li>離臺北車站步行可到，捷運板南線與淡水信義線都方便</li></ul><div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99%E5%91%A8%E9%82%8A" target="_blank" rel="noopener">📍 Google Maps</a></div></article></section>
+<section class="info-card"><h2>⏰ 固定時間點</h2><ul class="constraint-list"><li><span class="day-badge">Day 1</span><span class="board-time">09:00</span> 後出發｜爸爸上午有線上會議，結束後才能出發</li><li><span class="day-badge">Day 3</span><span class="board-time">17:30</span> 前抵達｜妹妹 18:00 有才藝課，要先回到台中家</li></ul></section>
+            <section class="info-card tips-section">
+                <h2>旅遊注意事項</h2>
+                <ul class="tips-list">
+                    <li>本範例為虛構行程，營業時間、票價與天氣皆為示意，出發前請以官方公告與中央氣象署預報為準</li>
+<li>5 人同行：一般計程車載客上限 4 人，叫車請選 6 人座</li>
+<li>全家悠遊卡先儲值，搭捷運不用排隊買票</li>
+<li>媽媽怕悶熱：隨身帶水、小風扇與雨傘，覺得不舒服就進室內休息</li>
+                </ul>
+            </section>
+        </section>
+
+        <section class="actions-section">
+            <button type="button" class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
+            <button type="button" class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>此行程由 Travel Plan Agent 產生</p>
+    </footer>
+
+    <script>
+        const tripName = "台北親子三日遊（虛構範例）";
+        const tripDate = "2026-10-14";
+        const root = document.documentElement;
+
+        function copyAll() {
+            // Read hidden days and plans too: drop the tab/plan switching styles for a moment
+            root.classList.remove('js');
+            const content = document.querySelector('main').innerText;
+            root.classList.add('js');
+            navigator.clipboard.writeText(content).then(() => {
+                alert('已複製到剪貼簿！');
+            }).catch(() => {
+                alert('複製失敗，請手動複製');
+            });
+        }
+
+        function shareViaLINE() {
+            const url = encodeURIComponent(window.location.href);
+            const text = encodeURIComponent(tripName + '\n' + tripDate + '\n查看完整行程：');
+            window.open('https://line.me/R/msg/text/?' + text + '%20' + url, '_blank', 'noopener');
+        }
+
+        (function () {
+            const tabs = Array.from(document.querySelectorAll('.day-tab'));
+            const panels = Array.from(document.querySelectorAll('.day-panel'));
+            const planButtons = Array.from(document.querySelectorAll('.plan-btn'));
+            const nav = document.querySelector('.trip-nav');
+            const main = document.querySelector('main');
+            const planKey = 'travel-plan:' + tripName + ':plan';
+
+            function showPanel(id) {
+                if (!panels.some((panel) => panel.id === id)) {
+                    id = panels.length ? panels[0].id : '';
+                }
+                panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === id));
+                tabs.forEach((tab) => {
+                    const selected = tab.dataset.target === id;
+                    tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    tab.tabIndex = selected ? 0 : -1;
+                    if (selected) {
+                        tab.scrollIntoView({ block: 'nearest', inline: 'center' });
+                    }
+                });
+            }
+
+            function setPlan(plan) {
+                root.dataset.plan = plan;
+                planButtons.forEach((button) => {
+                    button.setAttribute('aria-pressed', button.dataset.plan === plan ? 'true' : 'false');
+                });
+                try { localStorage.setItem(planKey, plan); } catch (e) {}
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    showPanel(tab.dataset.target);
+                    try { history.replaceState(null, '', '#' + tab.dataset.target); } catch (e) {}
+                    const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
+                    if (window.scrollY > top) {
+                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    }
+                });
+                tab.addEventListener('keydown', (event) => {
+                    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+                    if (!step) return;
+                    const next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+                    next.focus();
+                    next.click();
+                });
+            });
+
+            planButtons.forEach((button) => {
+                button.addEventListener('click', () => setPlan(button.dataset.plan));
+            });
+
+            let savedPlan = null;
+            try { savedPlan = localStorage.getItem(planKey); } catch (e) {}
+            setPlan(savedPlan === 'rain' ? 'rain' : 'sun');
+            showPanel(decodeURIComponent(location.hash.slice(1)));
+        })();
+    </script>
+</body>
+</html>

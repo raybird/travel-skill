@@ -1,0 +1,332 @@
+{
+  "meta": {
+    "generator": "travel-plan-agent",
+    "version": "1.1.0",
+    "revision": 3
+  },
+  "trip": {
+    "name": "台北親子三日遊（虛構範例）",
+    "duration_days": 3,
+    "date": "2026-10-14",
+    "starting_point": "台中",
+    "transportation": "自駕＋捷運"
+  },
+  "travelers": [
+    { "id": "mom", "label": "媽媽", "emoji": "👩", "color": "violet", "profile": "大人", "interests": ["咖啡廳", "拍照"], "needs": ["怕悶熱", "走一段就要坐下休息"] },
+    { "id": "dad", "label": "爸爸", "emoji": "👨", "color": "amber", "profile": "大人・駕駛", "interests": ["建築", "美食"], "needs": ["長途開車中途要休息"] },
+    { "id": "sis", "label": "姊姊", "emoji": "👧", "color": "rose", "profile": "國二", "interests": ["動漫周邊", "拍照打卡"] },
+    { "id": "bro", "label": "哥哥", "emoji": "👦", "color": "blue", "profile": "小五", "interests": ["火車", "恐龍", "模型"] },
+    { "id": "kid", "label": "妹妹", "emoji": "🧒", "color": "cyan", "profile": "小一", "interests": ["動物", "太空", "扭蛋"], "needs": ["午後容易累"] }
+  ],
+  "lodging": [
+    {
+      "name": "示範旅店（虛構）",
+      "address": "臺北車站周邊",
+      "nights": [1, 2],
+      "check_in": "15:00",
+      "check_out": "11:00",
+      "parking": "附設停車場，住宿期間車停旅店，市區改搭捷運或叫車",
+      "notes": ["入住前可先寄放行李（需向旅店確認）", "離臺北車站步行可到，捷運板南線與淡水信義線都方便"]
+    }
+  ],
+  "constraints": [
+    { "day": 1, "time": "09:00", "kind": "depart_after", "description": "爸爸上午有線上會議，結束後才能出發" },
+    { "day": 3, "time": "17:30", "kind": "arrive_by", "description": "妹妹 18:00 有才藝課，要先回到台中家" }
+  ],
+  "changes": [
+    { "title": "要買票的景點都補上排隊緩衝", "detail": "101 觀景台、動物園、晚餐熱門店都已預留排隊與等候時間。" },
+    { "day": 2, "title": "動物園改成上午場、下午全走室內", "detail": "週四午後降雨機率較高，12:00 前離園；出門時已經下大雨就直接改去鐵道部園區。" },
+    { "day": 3, "title": "最後一天提早南下", "detail": "原本 14:00 才離開台北，遇上週五塞車可能趕不上 17:30；改成上午只排一個室內點，11:15 出發。" }
+  ],
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "北上與台北 101",
+      "date": "2026-10-14",
+      "weather": { "summary": "多雲，午後短暫陣雨", "temperature": "24–29°C", "rain_chance": 30, "source": "中央氣象署（範例資料）", "checked_at": "2026-10-11" },
+      "segments": [
+        {
+          "time": "09:00",
+          "type": "travel",
+          "name": "台中出發，國道 1 號北上",
+          "duration_minutes": 75,
+          "notes": "爸爸開車，其他人可以在車上休息。",
+          "tips": ["想避開大貨車可改走國道 3 號，但距離較長；出發前用導航比較兩條路線的實際時間再決定"]
+        },
+        {
+          "time": "10:15",
+          "type": "break",
+          "name": "湖口服務區",
+          "address": "湖口服務區",
+          "duration_minutes": 20,
+          "notes": "上廁所、買飲料、伸展一下。",
+          "highlights": { "dad": "開了一個多小時，下車走一走再上路", "kid": "買點心" }
+        },
+        {
+          "time": "11:45",
+          "type": "travel",
+          "name": "旅店停車、寄放行李",
+          "address": "臺北車站",
+          "duration_minutes": 20,
+          "buffer_minutes": 15,
+          "buffer_notes": "進停車場與辦理寄放",
+          "transit": { "mode": "drive", "duration_minutes": 70, "origin": "湖口服務區", "summary": "下交流道後直接開到旅店，車停好之後三天市區都不開車" },
+          "to_verify": "入住前能否先停車與寄放行李，出發前一天打電話給旅店確認"
+        },
+        {
+          "time": "12:30",
+          "type": "meal",
+          "name": "台北 101 購物中心美食街午餐",
+          "address": "台北101購物中心",
+          "duration_minutes": 50,
+          "buffer_minutes": 15,
+          "buffer_notes": "中午用餐尖峰找座位",
+          "transit": { "mode": "mrt", "lines": ["R"], "duration_minutes": 25, "summary": "臺北車站搭淡水信義線往象山方向，台北101/世貿站下車" },
+          "highlights": { "mom": "先找有座位的區域，媽媽坐著等，其他人去買" }
+        },
+        {
+          "time": "13:30",
+          "type": "attraction",
+          "name": "台北 101 觀景台",
+          "address": "台北101觀景台",
+          "duration_minutes": 90,
+          "buffer_minutes": 30,
+          "buffer_notes": "買票與上下樓電梯排隊；事先線上購票可縮短",
+          "notes": "看完直接在樓下叫車前往下一站。",
+          "highlights": {
+            "sis": "高樓層窗景拍照",
+            "bro": "看風阻尼器，了解高樓怎麼防風防震",
+            "kid": "阻尼器寶寶吉祥物合照、挑紀念品"
+          },
+          "to_verify": "票價、營業時間與線上購票方式以官網公告為準",
+          "sources": [{ "title": "台北101 官方網站", "url": "https://www.taipei-101.com.tw/" }]
+        },
+        {
+          "time": "15:30",
+          "type": "attraction",
+          "name": "臺北市兒童新樂園",
+          "address": "臺北市兒童新樂園",
+          "duration_minutes": 90,
+          "transit": { "mode": "rideshare", "duration_minutes": 30, "call_at": "15:20", "summary": "5 人請用 App 叫 6 人座車；一般計程車載客上限 4 人" },
+          "notes": "戶外遊樂設施為主，天氣好時玩到閉園前。",
+          "highlights": { "kid": "摩天輪、旋轉木馬", "bro": "刺激一點的設施", "mom": "園內找有遮蔭的座位休息" },
+          "to_verify": "平日閉園時間與設施是否因天候暫停，以官網公告為準",
+          "sources": [{ "title": "臺北市兒童新樂園", "url": "https://www.tcap.taipei/" }],
+          "rain_plan": {
+            "name": "國立臺灣科學教育館＋臺北市立天文科學教育館",
+            "address": "國立臺灣科學教育館",
+            "duration_minutes": 90,
+            "transit": { "mode": "rideshare", "duration_minutes": 30, "call_at": "15:20", "summary": "兩館在兒童新樂園附近，同樣叫 6 人座車直達" },
+            "notes": "全室內，展區有很多可以動手玩的互動裝置。",
+            "reason": "午後陣雨時戶外遊樂設施可能暫停，改去附近的室內館",
+            "highlights": { "kid": "天文館的太空展區", "bro": "科教館動手做實驗", "mom": "館內有冷氣和座位，隨時可以休息" },
+            "to_verify": "兩館休館日、票價與特展檔期以官網為準",
+            "sources": [
+              { "title": "國立臺灣科學教育館", "url": "https://www.ntsec.gov.tw/" },
+              { "title": "臺北市立天文科學教育館", "url": "https://www.tam.gov.taipei/" }
+            ]
+          }
+        },
+        {
+          "time": "17:30",
+          "type": "meal",
+          "name": "士林夜市晚餐",
+          "address": "士林夜市",
+          "duration_minutes": 75,
+          "buffer_minutes": 15,
+          "buffer_notes": "熱門攤位排隊",
+          "notes": "人多時分兩組排隊，媽媽和妹妹先找地方坐。",
+          "highlights": { "sis": "逛飾品小店", "kid": "夜市小遊戲" },
+          "rain_plan": {
+            "name": "臺北車站周邊室內美食街",
+            "address": "臺北車站",
+            "duration_minutes": 60,
+            "transit": { "mode": "mrt", "lines": ["R"], "duration_minutes": 20, "summary": "劍潭站搭淡水信義線到臺北車站" },
+            "notes": "吃完直接走回旅店，不用撐傘逛夜市。",
+            "reason": "雨大時戶外夜市擁擠又濕滑"
+          }
+        },
+        {
+          "time": "19:15",
+          "type": "travel",
+          "name": "回旅店辦理入住",
+          "address": "臺北車站",
+          "duration_minutes": 20,
+          "transit": { "mode": "mrt", "lines": ["R"], "duration_minutes": 20, "summary": "劍潭站搭淡水信義線到臺北車站" }
+        }
+      ],
+      "travel_notes": "自駕只用在台中—台北往返，市區移動全部改搭捷運或叫車。"
+    },
+    {
+      "day": 2,
+      "title": "動物園上午場與室內下午",
+      "date": "2026-10-15",
+      "weather": { "summary": "午後雷陣雨", "temperature": "23–28°C", "rain_chance": 60, "source": "中央氣象署（範例資料）", "checked_at": "2026-10-11" },
+      "segments": [
+        {
+          "time": "09:00",
+          "type": "attraction",
+          "name": "臺北市立動物園",
+          "address": "臺北市立動物園",
+          "duration_minutes": 180,
+          "buffer_minutes": 20,
+          "buffer_notes": "入園與園內遊園列車排隊",
+          "transit": { "mode": "rideshare", "duration_minutes": 30, "call_at": "08:25", "summary": "叫 6 人座車直達正門，雨天不用走戶外路段" },
+          "notes": "12:00 前離園，避開午後雷陣雨。",
+          "tips": [
+            "先搭園內遊園列車上坡，再一路往下坡走回大門，比較省力",
+            "企鵝館、大貓熊館、兩棲爬蟲動物館都是室內館，可以當休息點"
+          ],
+          "highlights": {
+            "kid": "企鵝館、大貓熊館",
+            "bro": "兩棲爬蟲動物館",
+            "sis": "無尾熊館拍照",
+            "mom": "每走一段就進室內館坐下休息，不要硬撐"
+          },
+          "to_verify": "遊園列車班次與票價、各館是否整修，以官網公告為準",
+          "sources": [{ "title": "臺北市立動物園", "url": "https://www.zoo.gov.taipei/" }],
+          "rain_plan": {
+            "time": "09:30",
+            "name": "國立臺灣博物館 鐵道部園區",
+            "address": "國立臺灣博物館鐵道部園區",
+            "duration_minutes": 150,
+            "transit": { "mode": "walk", "duration_minutes": 15, "summary": "從臺北車站經地下街往北門方向步行" },
+            "notes": "展區以室內為主，走動距離短、地面平坦。",
+            "reason": "出門時已經下大雨的話，動物園戶外路段濕滑又耗體力",
+            "highlights": { "bro": "鐵道模型與火車展示", "kid": "收集紀念章", "sis": "紅磚古蹟建築拍照", "mom": "全程室內，體力負擔小" },
+            "to_verify": "開放時間、休館日與票價以官網為準",
+            "sources": [{ "title": "國立臺灣博物館", "url": "https://www.ntm.gov.tw/" }]
+          }
+        },
+        {
+          "time": "12:30",
+          "type": "meal",
+          "name": "臺北車站周邊午餐",
+          "address": "臺北車站",
+          "duration_minutes": 60,
+          "buffer_minutes": 15,
+          "buffer_notes": "尖峰找座位",
+          "transit": { "mode": "rideshare", "duration_minutes": 30, "call_at": "12:00", "summary": "在動物園出口前先叫車，走到大門剛好上車" },
+          "rain_plan": {
+            "name": "臺北車站周邊午餐",
+            "address": "臺北車站",
+            "duration_minutes": 60,
+            "transit": { "mode": "walk", "duration_minutes": 15, "summary": "從鐵道部園區步行回臺北車站" },
+            "reason": "雨備行程就在附近，走地下街過來即可"
+          }
+        },
+        {
+          "time": "13:30",
+          "type": "attraction",
+          "name": "台北地下街",
+          "address": "台北地下街",
+          "duration_minutes": 120,
+          "notes": "動漫周邊、模型與扭蛋店集中，全程在地下街不怕下雨。",
+          "highlights": { "bro": "模型與遊戲店", "sis": "動漫周邊", "kid": "整排扭蛋機", "mom": "逛累了先回旅店休息，步行就到" }
+        },
+        {
+          "time": "15:45",
+          "type": "attraction",
+          "name": "西門町",
+          "address": "西門町",
+          "duration_minutes": 120,
+          "transit": { "mode": "mrt", "lines": ["BL"], "duration_minutes": 15, "summary": "臺北車站搭板南線到西門站" },
+          "notes": "街上動漫周邊店與小吃多，傍晚人潮開始變多。",
+          "highlights": { "sis": "動漫周邊店", "kid": "街頭小吃" },
+          "rain_plan": {
+            "name": "萬年商業大樓",
+            "address": "萬年商業大樓",
+            "duration_minutes": 120,
+            "transit": { "mode": "mrt", "lines": ["BL"], "duration_minutes": 15, "summary": "臺北車站搭板南線到西門站，出站步行幾分鐘" },
+            "notes": "室內模型、公仔與電玩店聚集。",
+            "reason": "雨大時留在室內逛，不用在徒步區撐傘",
+            "highlights": { "bro": "模型與公仔", "sis": "動漫周邊" }
+          }
+        },
+        {
+          "time": "18:00",
+          "type": "meal",
+          "name": "西門町晚餐",
+          "address": "西門町",
+          "duration_minutes": 75,
+          "buffer_minutes": 20,
+          "buffer_notes": "熱門店家先抽號碼牌再逛",
+          "highlights": { "dad": "先確認店家有沒有 5 人座位" }
+        },
+        {
+          "time": "19:30",
+          "type": "travel",
+          "name": "搭捷運回旅店",
+          "address": "臺北車站",
+          "duration_minutes": 15,
+          "transit": { "mode": "mrt", "lines": ["BL"], "duration_minutes": 15, "summary": "西門站搭板南線到臺北車站" }
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "title": "恐龍化石與提早南下",
+      "date": "2026-10-16",
+      "weather": { "summary": "多雲時晴", "temperature": "23–29°C", "rain_chance": 20, "source": "中央氣象署（範例資料）", "checked_at": "2026-10-11" },
+      "segments": [
+        {
+          "time": "08:45",
+          "type": "travel",
+          "name": "退房、行李放上車",
+          "address": "臺北車站",
+          "duration_minutes": 20,
+          "buffer_minutes": 15,
+          "buffer_notes": "退房排隊",
+          "notes": "車先留在旅店停車場，人輕裝出門。",
+          "to_verify": "退房後能否繼續停車到中午，入住時先問旅店"
+        },
+        {
+          "time": "09:30",
+          "type": "attraction",
+          "name": "國立臺灣博物館 土銀展示館",
+          "address": "國立臺灣博物館土銀展示館",
+          "duration_minutes": 90,
+          "transit": { "mode": "mrt", "lines": ["R"], "duration_minutes": 20, "summary": "臺北車站搭淡水信義線到台大醫院站，出站步行約 5 分鐘" },
+          "notes": "全室內展館，不受天氣影響。",
+          "highlights": { "bro": "大型恐龍骨骼化石", "kid": "走進舊銀行金庫", "sis": "古蹟建築拍照", "dad": "看老銀行建築" },
+          "to_verify": "開館時間、休館日與票價以官網為準",
+          "sources": [{ "title": "國立臺灣博物館", "url": "https://www.ntm.gov.tw/" }]
+        },
+        {
+          "time": "11:15",
+          "type": "travel",
+          "name": "回旅店取車，國道 1 號南下",
+          "address": "臺北車站",
+          "duration_minutes": 15,
+          "transit": { "mode": "mrt", "lines": ["R"], "duration_minutes": 20, "summary": "台大醫院站搭淡水信義線回臺北車站" }
+        },
+        {
+          "time": "12:30",
+          "type": "meal",
+          "name": "湖口服務區午餐",
+          "address": "湖口服務區",
+          "duration_minutes": 50,
+          "transit": { "mode": "drive", "duration_minutes": 70, "origin": "臺北車站" },
+          "tips": ["北部路段塞車的話，改到下一個服務區吃，不要為了吃飯繞路"]
+        },
+        {
+          "time": "15:00",
+          "type": "travel",
+          "name": "回到台中家",
+          "duration_minutes": 20,
+          "transit": { "mode": "drive", "duration_minutes": 90 },
+          "notes": "距離 17:30 截止時間還有 2.5 小時緩衝，就算塞車也來得及。"
+        }
+      ],
+      "travel_notes": "上午只排一個室內點，11:15 前一定要出發。"
+    }
+  ],
+  "summary": {
+    "notes": [
+      "本範例為虛構行程，營業時間、票價與天氣皆為示意，出發前請以官方公告與中央氣象署預報為準",
+      "5 人同行：一般計程車載客上限 4 人，叫車請選 6 人座",
+      "全家悠遊卡先儲值，搭捷運不用排隊買票",
+      "媽媽怕悶熱：隨身帶水、小風扇與雨傘，覺得不舒服就進室內休息"
+    ]
+  }
+}

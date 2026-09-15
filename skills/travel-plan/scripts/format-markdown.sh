@@ -1,136 +1,172 @@
 #!/bin/bash
 # Travel Plan - Markdown Output Formatter
-# Generates formatted Markdown itinerary from input data
+# Renders itinerary JSON (schema: references/output-formats.md) as a printable Markdown document
+
+set -euo pipefail
 
 INPUT_FILE="${1:-/dev/stdin}"
 OUTPUT_FILE="${2:-/dev/stdout}"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+source "$(dirname "$0")/lib/common.sh"
 
-print_header() {
-    cat << 'EOF'
-# TRAVEL ITINERARY
+JQ_PROGRAM=$(cat << 'JQ'
+include "itinerary";
 
----
+# Table cells: escape pipes, keep line breaks as <br>
+def cell: tostring | gsub("\\|"; "\\|") | gsub("\n"; "<br>");
 
-EOF
-}
+def bucket: ((.time | minutes_of_day) // 0) as $m | if $m < 11 * 60 then 0 elif $m < 14 * 60 then 1 else 2 end;
 
-print_day_section() {
-    local day_num="$1"
-    local day_title="$2"
-    cat << EOF
-## Day $day_num: $day_title
+def bucket_title: ["上午 (Morning)", "中途 (Midday)", "下午 (Afternoon)"][.];
 
-### 上午 (Morning)
-| 時間 | 項目 | 說明 |
-|------|------|------|
+def transit_text:
+    .transit as $transit
+    | select($transit)
+    | [
+        ($transit.mode | select(.) | mode_label),
+        ([($transit.lines // [])[] | line_name] | select(length > 0) | join("→")),
+        ($transit.duration_minutes | duration_text | select(.) | "約 \(.)"),
+        $transit.summary,
+        ($transit.call_at | select(.) | "\(.) 叫車")
+      ]
+    | map(select(present)) | join("｜");
 
-### 中途 (Midday)
-| 時間 | 項目 | 說明 |
-|------|------|------|
+def details($travelers):
+    . as $segment
+    | [
+        .notes,
+        (transit_text),
+        ((.tips // []) | select(length > 0) | "・" + join("<br>・")),
+        (.buffer_minutes | duration_text | select(.) | "⏳ 已預留 \(.)排隊／等候\(if $segment.buffer_notes then "：\($segment.buffer_notes)" else "" end)"),
+        ($travelers[] | select($segment.highlights[.id]? != null) | "\(member_label)：\($segment.highlights[.id])"),
+        (.to_verify | select(present) | "⚠️ 待確認：\(.)"),
+        (.reason | select(present) | "💡 切換原因：\(.)")
+      ]
+    | map(select(present)) | join("\n");
 
-### 下午 (Afternoon)
-| 時間 | 項目 | 說明 |
-|------|------|------|
+def segment_row($travelers; $with_rain):
+    [
+        (.time // ""),
+        ((type_tag | select(.) | "\(.[0])｜") // "") + (.name // ""),
+        details($travelers)
+    ]
+    + (if $with_rain then
+        [ .rain_plan | if . then "**\(.name // "")**" + ([details($travelers)] | map(select(present) | "\n" + .) | join("")) else "—" end ]
+       else [] end)
+    | map(cell) | "| " + join(" | ") + " |";
 
-EOF
-}
+def day_section($trip):
+    . as $day
+    | ([.segments[] | select(.rain_plan)] | length > 0) as $with_rain
+    | [
+        "## Day \(.day): \(.title // "Day \(.day)")\(if .date then " · \(.date | short_date)" else "" end)",
+        "",
+        (.weather | select(.) | "> 🌦️ \(.summary // "")\(if .temperature then " · \(.temperature)" else "" end)\(if .rain_chance != null then " · 降雨 \(.rain_chance)%" else "" end)\(if .source then "（\(.source)\(if .checked_at then "，\(.checked_at) 查詢" else "" end)）" else "" end)\n"),
+        ($trip.changes[] | select(.day == $day.day) | "> ✅ **修正：\(.title // "")**\(if .detail then " — \(.detail)" else "" end)\n"),
+        ($trip.constraints[] | select(.day == $day.day) | "> ⏰ **固定時間：\(.time // "") \(constraint_label)**\(if .description then " — \(.description)" else "" end)\n"),
+        (
+            .segments | group_by(bucket)[]
+            | "### \(.[0] | bucket | bucket_title)",
+              "| 時間 | 項目 | 說明 |\(if $with_rain then " ⛈️ 雨備 |" else "" end)",
+              "|------|------|------|\(if $with_rain then "------|" else "" end)",
+              (.[] | segment_row($trip.travelers; $with_rain)),
+              ""
+        ),
+        (.travel_notes | select(present) | "交通說明：\(.)\n"),
+        (
+            [.segments[] | (., .rain_plan // empty) | (.sources // [])[] | select(.url | is_safe_url)]
+            | unique_by(.url)
+            | select(length > 0)
+            | "**資料來源**", (.[] | "- [\(.title // .url)](\(.url))\(if .checked_at then "（\(.checked_at) 查證）" else "" end)"), ""
+        ),
+        "---",
+        ""
+      ]
+    | join("\n");
 
-print_footer() {
-    cat << 'EOF'
----
+normalize
+| . as $trip
+| (.summary.notes // [
+    "出發前請再次確認景點開放時間",
+    "建議攜帶防曬用品及雨具",
+    "交通資訊僅供參考，實際路況可能不同",
+    "餐廳建議可事先訂位以確保有位"
+  ]) as $tips
+| [
+    "# \(.trip.name)",
+    "",
+    "> " + ([
+        "\(.trip.duration_days)天",
+        (.trip.date | select(present) | short_date),
+        (.trip.starting_point | select(present) | "\(.)出發"),
+        (.trip.transportation | select(present))
+      ] | join(" · ")),
+    "",
+    (select((.travelers | length) > 0)
+        | "## 同行成員", "",
+          "| 成員 | 說明 | 興趣 | 需要留意 |",
+          "|------|------|------|------|",
+          (.travelers[] | [member_label, (.profile // ""), ((.interests // []) | join("、")), ((.needs // []) | join("、"))] | map(cell) | "| " + join(" | ") + " |"),
+          ""),
+    (select((.lodging | length) > 0)
+        | "## 住宿", "",
+          (.lodging[]
+            | "- **\(.name // "")**\(if (.nights // []) | length > 0 then "（第 \(.nights | map(tostring) | join("、")) 晚）" else "" end)"
+              + ([(.check_in | select(.) | "入住 \(.)"), (.check_out | select(.) | "退房 \(.)")] | if length > 0 then "　" + join("／") else "" end),
+              (.address | select(present) | "  - 地址：\(.)"),
+              (.parking | select(present) | "  - 停車：\(.)"),
+              ((.notes // [])[] | "  - \(.)")),
+          ""),
+    (select((.constraints | length) > 0)
+        | "## 固定時間點", "",
+          (.constraints[] | "- Day \(.day) \(.time // "") \(constraint_label)\(if .description then "：\(.description)" else "" end)"),
+          ""),
+    (select([.changes[] | select(.day == null)] | length > 0)
+        | "## 修正重點", "",
+          (.changes[] | select(.day == null) | "- ✅ **\(.title // "")**\(if .detail then "：\(.detail)" else "" end)"),
+          ""),
+    "---",
+    "",
+    (.itinerary[] | day_section($trip)),
+    "## 旅遊注意事項 (Travel Tips)",
+    "",
+    ($tips[] | "- \(.)"),
+    "",
+    "---",
+    "",
+    "*此行程由 Travel Plan Agent 產生*",
+    ""
+  ]
+| join("\n")
+JQ
+)
 
-## 旅遊注意事項 (Travel Tips)
-
-- 出發前請再次確認景點開放時間
-- 建議攜帶防曬用品及雨具
-- 交通資訊僅供參考，實際路況可能不同
-- 餐廳建議可事先訂位以確保有位
-
----
-
-*此行程由 Travel Plan Agent 產生*
-EOF
-}
-
-# Main formatter function
-format_markdown() {
-    local input_data="$1"
-    
-    # Parse input and generate formatted markdown
-    # Expected input format: JSON with itinerary data
-    
-    print_header
-    
-    # Check if jq is available for JSON parsing
-    if command -v jq &> /dev/null; then
-        # Process JSON input
-        local trip_name
-        trip_name=$(echo "$input_data" | jq -r '.trip.name // "旅遊行程"')
-        local days
-        days=$(echo "$input_data" | jq -r '.trip.days // 1')
-        
-        echo "# $trip_name"
-        echo ""
-        echo "---"
-        echo ""
-        
-        # Generate day sections
-        for i in $(seq 1 "$days"); do
-            print_day_section "$i" "Day $i"
-        done
-    else
-        # Fallback to basic template
-        print_day_section 1 "行程規劃"
-    fi
-    
-    print_footer
-}
-
-# Usage information
 usage() {
     echo "Usage: $0 [input.json] [output.md]"
     echo ""
     echo "Arguments:"
-    echo "  input.json   Input JSON file (default: stdin)"
+    echo "  input.json   Itinerary JSON file (default: stdin)"
     echo "  output.md    Output Markdown file (default: stdout)"
     echo ""
-    echo "Input JSON format:"
-    echo '  {'
-    echo '    "trip": {'
-    echo '      "name": "行程名稱",'
-    echo '      "days": 3'
-    echo '    }'
-    echo '  }'
+    echo "Input JSON follows the schema in references/output-formats.md."
     echo ""
     echo "Examples:"
     echo "  $0 itinerary.json plan.md"
     echo "  cat itinerary.json | $0 > plan.md"
 }
 
-# Main execution
 main() {
-    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
         exit 0
     fi
-    
-    # Read input
+
+    require_jq
+
     local input_data
-    if [[ -p "/dev/stdin" ]] || [[ "$INPUT_FILE" != "/dev/stdin" && -f "$INPUT_FILE" ]]; then
-        input_data=$(cat "$INPUT_FILE")
-    else
-        # No input provided, generate template
-        input_data='{}'
-    fi
-    
-    format_markdown "$input_data" "$OUTPUT_FILE"
+    input_data=$(read_input "$INPUT_FILE")
+
+    printf '%s' "$input_data" | itinerary_jq -j "$JQ_PROGRAM" > "$OUTPUT_FILE"
 }
 
 main "$@"

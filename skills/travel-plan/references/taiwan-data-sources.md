@@ -92,6 +92,53 @@ This document lists the available data sources for Taiwan travel information tha
 | 景點 | CSV/JSON | Hualien attractions |
 | 活動 | CSV/JSON | Hualien events |
 
+## Weather
+
+### 中央氣象署 (Central Weather Administration, CWA)
+
+**Website**: https://www.cwa.gov.tw/ — human-readable forecasts; point users here when you cannot query the API.
+
+**Open Data Platform**: https://opendata.cwa.gov.tw/ — requires a free member account; every API call needs the member authorization code (`Authorization` query parameter).
+
+**API base**: `https://opendata.cwa.gov.tw/api/v1/rest/datastore/{dataset}`
+
+| Dataset | Description |
+|---------|-------------|
+| `F-C0032-001` | 一般天氣預報-今明 36 小時天氣預報 (county level) |
+| `F-D0047-089` | 鄉鎮天氣預報-臺灣未來 3 天天氣預報 (every 3 hours) |
+| `F-D0047-091` | 鄉鎮天氣預報-臺灣未來 1 週天氣預報 |
+| `F-D0047-061` / `F-D0047-063` | 鄉鎮天氣預報-臺北市未來 3 天 / 1 週 |
+| `F-D0047-073` / `F-D0047-075` | 鄉鎮天氣預報-臺中市未來 3 天 / 1 週 |
+
+Other counties have their own `F-D0047-*` codes; look them up in the API document at https://opendata.cwa.gov.tw/apidoc/v1 rather than guessing.
+
+```bash
+curl "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization=YOUR_KEY"
+```
+
+Record each forecast in the day's `weather` object of the itinerary JSON, with its `source` and `checked_at`. Forecasts change daily; re-check a few days before departure.
+
+## Transportation
+
+### TDX 運輸資料流通服務 (Transport Data eXchange, MOTC)
+
+**Website**: https://tdx.transportdata.tw/
+
+**API base**: `https://tdx.transportdata.tw/api/basic`
+
+Covers MRT (e.g. `/v2/Rail/Metro/Station/TRTC` for Taipei Metro), buses, 台鐵 (`/v3/Rail/TRA/...`), and 高鐵 (`/v2/Rail/THSR/...`) stations and timetables.
+
+**Access**:
+- Without an account ("guest mode"): browser access to basic services only, limited to 20 calls per source IP per day
+- With a free member account: an API key (Client Id / Client Secret) unlocks the full service; rate limits depend on the subscription plan
+- Sample code: https://github.com/tdxmotc/SampleCode
+
+### 高速公路 1968 (Freeway Bureau, MOTC)
+
+**Website**: https://1968.freeway.gov.tw/
+
+Real-time freeway conditions: road network map, section speeds, CCTV, incidents and roadworks, service area status, travel time estimates and forecasts, and congestion rankings. Data refreshes every minute. Use it to compare freeway routes (Planning Rule 4) and to set return-trip buffers before a deadline.
+
 ## API Access Examples
 
 ### Basic HTTP Request (Generic)
@@ -154,12 +201,13 @@ curl -X GET "https://example.com/api/attractions" \
 2. **Local Verification**: Cross-check with city-specific portals
 3. **Freshness Check**: Always note the data update timestamp
 4. **Fallback**: Have backup sources for popular destinations
+5. **Citation**: Record the source and query date for every fact you use, in the itinerary JSON `sources` (`title`, `url`, `checked_at`) or the day's `weather.checked_at`
 
 ## Rate Limits and Access
 
 - Most government APIs are free and open
-- Some require simple registration
-- No authentication required for most endpoints
+- Tourism datasets on data.gov.tw and city portals generally need no authentication
+- CWA and TDX require a free member account and key (see above)
 - Check individual portal documentation for limits
 
 ## Alternative Data Sources
