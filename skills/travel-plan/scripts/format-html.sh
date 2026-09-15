@@ -1,6 +1,9 @@
 #!/bin/bash
 # Travel Plan - HTML Output Formatter
-# Generates mobile-friendly HTML itinerary
+# Renders assets/html-template.html with itinerary JSON (schema: references/output-formats.md)
+# style.css is inlined so the output is a single file that works offline.
+
+set -euo pipefail
 
 INPUT_FILE="${1:-/dev/stdin}"
 OUTPUT_FILE="${2:-/dev/stdout}"
@@ -8,164 +11,101 @@ TEMPLATE_DIR="${3:-$(dirname "$0")/../assets}"
 
 # Color codes
 RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m'
 
-print_header() {
-    cat << 'EOF'
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{TRIP_NAME}}</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header class="trip-header">
-        <div class="header-content">
-            <h1>{{TRIP_NAME}}</h1>
-            <p class="trip-meta">{{DURATION}} · {{DATE}}</p>
-        </div>
-    </header>
-    
-    <main class="container">
-EOF
-}
+# Every value is HTML-escaped (@html) or JSON-encoded for <script> (js),
+# and placeholders are replaced in a single pass so values are never re-scanned.
+JQ_PROGRAM=$(cat << 'JQ'
+def esc: tostring | @html;
+def js: tojson | gsub("<"; "\\u003c");
 
-print_day_section() {
-    local day_num="$1"
-    local day_title="$2"
-    
-    cat << EOF
-        <section class="day-section">
-            <div class="day-header">
-                <span class="day-badge">Day $day_num</span>
-                <span class="day-title">$day_title</span>
-            </div>
-            
-            <div class="time-card morning">
-                <span class="time-label">09:00</span>
-                <div class="spot-info">
-                    <h3>景點名稱</h3>
-                    <p>參觀說明...</p>
-                </div>
-            </div>
-            
-            <div class="time-card break">
-                <span class="time-label">12:00</span>
-                <div class="spot-info">
-                    <h3>午餐推薦</h3>
-                    <p>餐廳或休息站建議</p>
-                </div>
-            </div>
-            
-            <div class="time-card afternoon">
-                <span class="time-label">14:00</span>
-                <div class="spot-info">
-                    <h3>景點名稱</h3>
-                    <p>參觀說明...</p>
-                </div>
-            </div>
-        </section>
-EOF
-}
+def duration_text:
+    if . == null then null
+    elif . >= 60 then "\(. / 60 | floor) 小時" + (if . % 60 > 0 then " \(. % 60) 分" else "" end)
+    else "\(.) 分鐘"
+    end;
 
-print_tips_section() {
-    cat << 'EOF'
-        <section class="tips-section">
-            <h2>旅遊注意事項</h2>
-            <ul class="tips-list">
-                <li>出發前請再次確認景點開放時間</li>
-                <li>建議攜帶防曬用品及雨具</li>
-                <li>交通資訊僅供參考，實際路況可能不同</li>
-            </ul>
-        </section>
-EOF
-}
+def period:
+    ((.time // "") | split(":")[0] | tonumber? // 0) as $h
+    | if $h >= 17 then "evening" elif $h >= 12 then "afternoon" else "morning" end;
 
-print_actions_section() {
-    cat << 'EOF'
-        <section class="actions-section">
-            <button class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
-            <button class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
-        </section>
-EOF
-}
+def tag:
+    {
+        attraction: ["景點", "tag-attraction"],
+        meal: ["用餐", "tag-meal"],
+        break: ["休息", "tag-break"],
+        travel: ["交通", "tag-travel"],
+        optional: ["選配", "tag-optional"]
+    }[.type // ""];
 
-print_footer() {
-    cat << 'EOF'
-    </main>
-    
-    <footer class="footer">
-        <p>此行程由 Travel Plan Agent 產生</p>
-    </footer>
-    
-    <script>
-        function copyAll() {
-            const content = document.querySelector('main').innerText;
-            navigator.clipboard.writeText(content).then(() => {
-                alert('已複製到剪貼簿！');
-            }).catch(() => {
-                alert('複製失敗，請手動複製');
-            });
-        }
-        
-        function shareViaLINE() {
-            const url = encodeURIComponent(window.location.href);
-            const text = encodeURIComponent('{{TRIP_NAME}}\n{{DATE}}\n查看完整行程：');
-            window.open('https://line.me/R/msg/text/?' + text + '%20' + url, '_blank');
-        }
-    </script>
-</body>
-</html>
-EOF
-}
+def segment:
+    (if .type == "meal" or .type == "break" then "break" else period end) as $class
+    | (.duration_minutes | duration_text) as $duration
+    | tag as $tag
+    | "            <div class=\"time-card \($class)\">\n"
+    + "                <span class=\"time-label\">\(.time // "" | esc)</span>\n"
+    + "                <div class=\"spot-info\">\n"
+    + "                    <h3>\(.name // "" | esc)</h3>\n"
+    + (if .notes then "                    <p>\(.notes | esc)</p>\n" else "" end)
+    + (if (.tips | length) > 0 then "                    <p>\(.tips | join("・") | esc)</p>\n" else "" end)
+    + (if .type == "travel" and $duration then
+        "                    <span class=\"travel-time\">約 \($duration | esc)</span>\n"
+      elif $tag then
+        "                    <span class=\"spot-tag \($tag[1])\">\($tag[0])\(if $duration then " · 約 \($duration | esc)" else "" end)</span>\n"
+      else "" end)
+    + "                </div>\n"
+    + "            </div>";
 
-# Generate HTML from input data
-generate_html() {
-    local input_data="$1"
-    
-    # Extract trip info if JSON input provided
-    local trip_name="旅遊行程"
-    local days=1
-    local date=""
-    
-    if command -v jq &> /dev/null && [[ "$input_data" != "{}" ]]; then
-        trip_name=$(echo "$input_data" | jq -r '.trip.name // "旅遊行程"')
-        days=$(echo "$input_data" | jq -r '.trip.duration_days // 1')
-        date=$(echo "$input_data" | jq -r '.trip.date // ""')
-    fi
-    
-    print_header | sed "s/{{TRIP_NAME}}/$trip_name/g" | sed "s/{{DURATION}}/${days}天/g" | sed "s/{{DATE}}/$date/g"
-    
-    # Generate day sections
-    for i in $(seq 1 "$days"); do
-        print_day_section "$i" "Day $i"
-    done
-    
-    print_tips_section
-    print_actions_section
-    print_footer
-}
+def day_section:
+    ([.title, .date] | map(select(. != null and . != "") | esc) | join(" · ")) as $title
+    | "        <section class=\"day-section\">\n"
+    + "            <div class=\"day-header\">\n"
+    + "                <span class=\"day-badge\">Day \(.day | esc)</span>\n"
+    + "                <span class=\"day-title\">\($title)</span>\n"
+    + "            </div>\n"
+    + ([.segments[]? | segment] | join("\n"))
+    + (if .travel_notes then "\n            <p class=\"travel-time\">\(.travel_notes | esc)</p>" else "" end)
+    + "\n        </section>";
+
+(.trip.name // "旅遊行程") as $name
+| (.trip.date // "") as $date
+| (.trip.duration_days // ([.itinerary[]?] | length | select(. > 0)) // 1) as $days
+| (.summary.notes // [
+    "出發前請再次確認景點開放時間",
+    "建議攜帶防曬用品及雨具",
+    "交通資訊僅供參考，實際路況可能不同"
+  ]) as $tips
+| {
+    STYLES: $css,
+    TRIP_NAME: ($name | esc),
+    TRIP_NAME_JSON: ($name | js),
+    DURATION: ("\($days)天" | esc),
+    DATE: ($date | esc),
+    DATE_JSON: ($date | js),
+    ITINERARY_SECTIONS: (
+        [.itinerary // [] | to_entries[] | .value + {day: (.value.day // (.key + 1))} | day_section]
+        | join("\n\n") | sub("^\\s+"; "")
+    ),
+    TRAVEL_TIPS: ([$tips[] | "<li>\(esc)</li>"] | join("\n                "))
+  } as $vars
+| $tpl | gsub("\\{\\{(?<key>[A-Z_]+)\\}\\}"; $vars[.key] // "{{\(.key)}}")
+JQ
+)
 
 # Usage information
 usage() {
     echo "Usage: $0 [input.json] [output.html] [template_dir]"
     echo ""
     echo "Arguments:"
-    echo "  input.json    Input JSON file (default: stdin)"
+    echo "  input.json    Itinerary JSON file (default: stdin)"
     echo "  output.html   Output HTML file (default: stdout)"
-    echo "  template_dir  Directory containing templates (default: assets/)"
+    echo "  template_dir  Directory containing html-template.html and style.css (default: assets/)"
     echo ""
-    echo "Input JSON format:"
+    echo "Input JSON follows the schema in references/output-formats.md:"
     echo '  {'
-    echo '    "trip": {'
-    echo '      "name": "行程名稱",'
-    echo '      "duration_days": 3,'
-    echo '      "date": "2026-01-25"'
-    echo '    }'
+    echo '    "trip": { "name": "行程名稱", "duration_days": 2, "date": "2026-01-25" },'
+    echo '    "itinerary": [ { "day": 1, "title": "主題", "segments": [ ... ] } ],'
+    echo '    "summary": { "notes": ["提醒事項"] }'
     echo '  }'
     echo ""
     echo "Examples:"
@@ -174,27 +114,38 @@ usage() {
     echo "  cat itinerary.json | $0 > plan.html"
 }
 
+die() {
+    echo -e "${RED}Error: $1${NC}" >&2
+    exit 1
+}
+
 # Main execution
 main() {
-    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
         exit 0
     fi
-    
-    # Check if jq is available
-    if ! command -v jq &> /dev/null; then
-        echo -e "${YELLOW}Warning: jq not found, using default values${NC}" >&2
-    fi
-    
-    # Read input
-    local input_data
-    if [[ -p "/dev/stdin" ]] || [[ "$INPUT_FILE" != "/dev/stdin" && -f "$INPUT_FILE" ]]; then
+
+    command -v jq &> /dev/null || die "jq is required (https://jqlang.github.io/jq/)"
+
+    local template="$TEMPLATE_DIR/html-template.html"
+    local stylesheet="$TEMPLATE_DIR/style.css"
+    [[ -f "$template" ]] || die "template not found: $template"
+    [[ -f "$stylesheet" ]] || die "stylesheet not found: $stylesheet"
+
+    # Read input; with no file and no piped/redirected stdin, render an empty itinerary
+    local input_data='{}'
+    if [[ "$INPUT_FILE" != "/dev/stdin" ]]; then
+        [[ -f "$INPUT_FILE" ]] || die "input file not found: $INPUT_FILE"
         input_data=$(cat "$INPUT_FILE")
-    else
-        input_data='{}'
+    elif [[ -p /dev/stdin || -f /dev/stdin ]]; then
+        input_data=$(cat)
     fi
-    
-    generate_html "$input_data"
+    [[ -n "${input_data//[[:space:]]/}" ]] || input_data='{}'
+
+    printf '%s' "$input_data" \
+        | jq -j --rawfile tpl "$template" --rawfile css "$stylesheet" "$JQ_PROGRAM" \
+        > "$OUTPUT_FILE"
 }
 
 main "$@"

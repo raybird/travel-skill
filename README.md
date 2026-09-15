@@ -26,15 +26,15 @@
 ## 🏗️ 專案結構
 
 ```text
-/home/kevin/Documents/RCodes/travel-skills/
+travel-skill/
 ├── skills/
 │   └── travel-plan/              # [核心] 行程規劃技能
 │       ├── SKILL.md              # 技能定義、Prompt 指令與工作流
-│       ├── assets/               # 相關素材資源
+│       ├── assets/               # HTML 模板與樣式（產生時內嵌為單一檔案）
 │       ├── references/           # 參考文件
 │       │   ├── output-formats.md # 輸出格式規範 (MD, HTML, JSON)
 │       │   └── ...
-│       └── scripts/              # 輔助腳本
+│       └── scripts/              # 輔助腳本（format-html.sh 需要 jq）
 ├── pingtung-kenting-weekend-trip.md    # (範例) 產出的行程 Markdown
 └── README.md                           # 專案說明文件
 ```
@@ -47,15 +47,15 @@
 
 ```bash
 # 直接從 GitHub 安裝
-npx skill-linker --from https://github.com/raybird/travel-skills
+npx skill-linker --from https://github.com/raybird/travel-skill
 
 # 或是如果您已經下載到本地
-npx skill-linker ./travel-skills
+npx skill-linker ./travel-skill
 ```
 
 工具會自動偵測 `skills` 資料夾，並引導您選擇要安裝的技能（如 `travel-plan`）以及目標 Agent。
 
-## �🚀 快速開始 (Quick Start)
+## 🚀 快速開始 (Quick Start)
 
 載入此專案環境後，您即擁有 `travel-plan` 的能力。請嘗試對 Agent 說：
 
@@ -71,7 +71,12 @@ Agent 將會自動引用 `skills/travel-plan/SKILL.md` 中的指引與知識，�
 
 本專案包含實際生成的行程範例：
 - [Markdown 行程表](./pingtung-kenting-weekend-trip.md)
-- [手機版網頁行程表](./pingtung-kenting-weekend-trip.html)
+
+手機版網頁行程表可由行程 JSON 產生（格式見 `skills/travel-plan/references/output-formats.md`）：
+
+```bash
+skills/travel-plan/scripts/format-html.sh itinerary.json itinerary.html
+```
 
 ---
 *Travel Skills Project - Designed for Intelligent Travel Planning*

@@ -1,0 +1,4 @@
+# Local agent / MCP tooling state
+*.db
+.agent/
+.serena/

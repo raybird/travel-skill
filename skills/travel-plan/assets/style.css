@@ -222,6 +222,16 @@ p {
     color: #C2185B;
 }
 
+.tag-travel {
+    background: #E0F7F5;
+    color: #00796B;
+}
+
+.tag-optional {
+    background: #EDE7F6;
+    color: #5E35B1;
+}
+
 /* Tips Section */
 .tips-section {
     background: var(--surface);

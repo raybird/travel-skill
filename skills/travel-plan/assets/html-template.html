@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{TRIP_NAME}}</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+{{STYLES}}
+    </style>
 </head>
 <body>
     <header class="trip-header">
@@ -35,17 +37,22 @@
     </footer>
     
     <script>
+        const tripName = {{TRIP_NAME_JSON}};
+        const tripDate = {{DATE_JSON}};
+
         function copyAll() {
             const content = document.querySelector('main').innerText;
             navigator.clipboard.writeText(content).then(() => {
                 alert('已複製到剪貼簿！');
+            }).catch(() => {
+                alert('複製失敗，請手動複製');
             });
         }
-        
+
         function shareViaLINE() {
             const url = encodeURIComponent(window.location.href);
-            const text = encodeURIComponent('{{TRIP_NAME}}\n{{DATE}}\n查看完整行程：');
-            window.open(`https://line.me/R/msg/text/?${text}%20${url}`, '_blank');
+            const text = encodeURIComponent(tripName + '\n' + tripDate + '\n查看完整行程：');
+            window.open('https://line.me/R/msg/text/?' + text + '%20' + url, '_blank', 'noopener');
         }
     </script>
 </body>

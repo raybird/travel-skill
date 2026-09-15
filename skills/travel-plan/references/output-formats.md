@@ -105,47 +105,41 @@ Responsive, phone-friendly version with touch-optimized UI.
 - Touch-friendly button sizes (min 44px)
 - Card-based layout for each day
 - Easy copy/share functionality
-- Works offline when saved
+- Works offline when saved: a single self-contained file with CSS inlined, no external stylesheet or CDN
 
-### Structure
+### Generation
 
-```html
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>行程名稱</title>
-    <style>
-        /* Responsive CSS */
-        :root {
-            --primary: #FF6B6B;
-            --secondary: #4ECDC4;
-            --accent: #FFE66D;
-            --background: #F7FFF7;
- --text: #2C           3E50;
-        }
-        body { font-family: system-ui, sans-serif; }
-        .day-card { background: white; margin: 12px; border-radius: 12px; }
-        .time-slot { padding: 12px; border-left: 4px solid var(--primary); }
-    </style>
-</head>
-<body>
-    <header style="background: var(--primary); color: white; padding: 16px;">
-        <h1>行程名稱</h1>
-    </header>
-    <main>
-        <div class="day-card">
-            <h2>Day 1</h2>
-            <div class="time-slot">
-                <span class="time">09:00</span>
-                <span class="spot">野柳地質公園</span>
-            </div>
-        </div>
-    </main>
-</body>
-</html>
+Build the itinerary as JSON (see [JSON Format](#3-json-format)), then render it:
+
+```bash
+scripts/format-html.sh itinerary.json itinerary.html
 ```
+
+The script fills `assets/html-template.html` and inlines `assets/style.css`. Requires `jq`.
+
+### Template Placeholders
+
+| Placeholder | Source | Encoding |
+|-------------|--------|----------|
+| `{{STYLES}}` | `assets/style.css` | raw |
+| `{{TRIP_NAME}}` | `trip.name` | HTML-escaped |
+| `{{DURATION}}` | `trip.duration_days` + 「天」 | HTML-escaped |
+| `{{DATE}}` | `trip.date` | HTML-escaped |
+| `{{TRIP_NAME_JSON}}` / `{{DATE_JSON}}` | `trip.name` / `trip.date` | JSON string literal for `<script>` |
+| `{{ITINERARY_SECTIONS}}` | `itinerary[]` | generated markup |
+| `{{TRAVEL_TIPS}}` | `summary.notes[]` | `<li>` items |
+
+### Segment Rendering
+
+| `type` | Card class | Tag |
+|--------|------------|-----|
+| `attraction` | `time-card morning / afternoon / evening` (by time: <12, 12–17, ≥17) | `tag-attraction` 景點 |
+| `optional` | same as above | `tag-optional` 選配 |
+| `meal` | `time-card break` | `tag-meal` 用餐 |
+| `break` | `time-card break` | `tag-break` 休息 |
+| `travel` | by time | `travel-time` with duration |
+
+`duration_minutes` is shown next to the tag; `tips[]` is joined into one line; `travel_notes` appears at the end of the day card.
 
 ### Styling (Vibrant Color Scheme)
 
@@ -156,21 +150,10 @@ Responsive, phone-friendly version with touch-optimized UI.
 --accent: #FFE66D       /* Bright Yellow */
 --background: #F7FFF7   /* Off White */
 --text-dark: #2C3E50    /* Dark Blue Gray */
---text-light: #7F8C8D   /* Light Gray */
-
-/* UI Elements */
-.btn {
-    background: var(--primary);
-    color: white;
-    border-radius: 8px;
-    padding: 12px 24px;
-}
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
+--text-light: #95A5A6   /* Light Gray */
 ```
+
+Full stylesheet, including dark mode and print styles: `assets/style.css`.
 
 ### Example Output
 
@@ -181,55 +164,56 @@ Responsive, phone-friendly version with touch-optimized UI.
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台北海岸一日遊</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+/* contents of assets/style.css */
+    </style>
 </head>
 <body>
     <header class="trip-header">
-        <h1>台北海岸一日遊</h1>
-        <p>2026/01/25 · 1天</p>
+        <div class="header-content">
+            <h1>台北海岸一日遊</h1>
+            <p class="trip-meta">1天 · 2026-01-25</p>
+        </div>
     </header>
-    
-    <main>
+
+    <main class="container">
         <section class="day-section">
-            <h2>Day 1</h2>
-            
+            <div class="day-header">
+                <span class="day-badge">Day 1</span>
+                <span class="day-title">北海岸巡禮 · 2026-01-25</span>
+            </div>
             <div class="time-card morning">
-                <span class="time">09:00</span>
+                <span class="time-label">09:30</span>
                 <div class="spot-info">
                     <h3>野柳地質公園</h3>
-                    <p>世界級地質景觀，建議停留 2 小時</p>
+                    <p>女王頭、仙女鞋等奇岩怪石</p>
+                    <span class="spot-tag tag-attraction">景點 · 約 2 小時 30 分</span>
                 </div>
             </div>
-            
-            <div class="rest-stop">
-                <span class="time">12:00</span>
+            <div class="time-card break">
+                <span class="time-label">12:30</span>
                 <div class="spot-info">
                     <h3>瑞芳美食廣場</h3>
-                    <p>午餐推薦</p>
+                    <p>午餐選擇多元</p>
+                    <span class="spot-tag tag-meal">用餐 · 約 1 小時</span>
                 </div>
             </div>
-            
-            <div class="time-card afternoon">
-                <span class="time">14:00</span>
-                <div class="spot-info">
-                    <h3>九份老街</h3>
-                    <p>經典山城風情，建議停留 2-3 小時</p>
-                </div>
-            </div>
+            <p class="travel-time">全程自駕，約 1.5 小時車程</p>
         </section>
-        
+
         <section class="tips-section">
             <h2>旅遊注意事項</h2>
-            <ul>
-                <li>野柳天氣多變，建議攜帶雨具</li>
-                <li>九份老街假日人潮眾多</li>
+            <ul class="tips-list">
+                <li>出發前請再次確認景點開放時間</li>
             </ul>
         </section>
+
+        <section class="actions-section">
+            <button class="btn btn-primary" onclick="copyAll()">複製全部行程</button>
+            <button class="btn btn-secondary" onclick="shareViaLINE()">分享到 LINE</button>
+        </section>
     </main>
-    
-    <footer>
-        <button class="btn-share">分享行程</button>
-    </footer>
+    <!-- footer and copy/share script omitted -->
 </body>
 </html>
 ```
@@ -263,6 +247,7 @@ Structured data for programmatic use, storage, or further processing.
   "itinerary": [
     {
       "day": "number",
+      "title": "string (optional, day theme)",
       "date": "YYYY-MM-DD",
       "segments": [
         {
@@ -320,6 +305,7 @@ Structured data for programmatic use, storage, or further processing.
   "itinerary": [
     {
       "day": 1,
+      "title": "北海岸巡禮",
       "date": "2026-01-25",
       "segments": [
         {
