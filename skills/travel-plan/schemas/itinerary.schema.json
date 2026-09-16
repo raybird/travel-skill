@@ -7,7 +7,7 @@
   "$defs": {
     "source": {
       "type": "object",
-      "required": ["title", "url", "checked_at"],
+      "required": ["title", "url"],
       "properties": {
         "title": { "type": "string", "minLength": 1 },
         "url": { "type": "string", "pattern": "^https?://" },
@@ -16,9 +16,22 @@
       },
       "additionalProperties": true
     },
-    "segment": {
+    "transit": {
       "type": "object",
-      "required": ["time", "type", "name"],
+      "properties": {
+        "mode": { "enum": ["drive", "mrt", "bus", "train", "hsr", "taxi", "rideshare", "walk"] },
+        "lines": { "type": "array" },
+        "duration_minutes": { "type": "number", "minimum": 0 },
+        "summary": { "type": "string" },
+        "call_at": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+        "origin": { "type": "string" },
+        "waypoints": { "type": "array", "items": { "type": "string" } },
+        "map_url": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "segmentFields": {
+      "type": "object",
       "properties": {
         "time": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
         "type": { "enum": ["attraction", "break", "meal", "travel", "optional"] },
@@ -39,34 +52,37 @@
           "additionalProperties": false
         },
         "map_url": { "type": "string" },
-        "transit": {
-          "type": "object",
-          "properties": {
-            "mode": { "enum": ["drive", "mrt", "bus", "train", "hsr", "taxi", "rideshare", "walk"] },
-            "lines": { "type": "array" },
-            "duration_minutes": { "type": "number", "minimum": 0 },
-            "summary": { "type": "string" },
-            "call_at": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
-            "origin": { "type": "string" },
-            "waypoints": { "type": "array", "items": { "type": "string" } },
-            "map_url": { "type": "string" }
-          },
-          "additionalProperties": true
-        },
+        "transit": { "$ref": "#/$defs/transit" },
         "highlights": { "type": "object", "additionalProperties": { "type": "string" } },
         "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
-        "to_verify": { "type": "string" },
-        "rain_plan": {
-          "allOf": [
-            { "$ref": "#/$defs/segment" },
-            {
-              "type": "object",
-              "properties": { "reason": { "type": "string", "minLength": 1 } }
-            }
-          ]
-        }
+        "to_verify": { "type": "string" }
       },
       "additionalProperties": true
+    },
+    "rainPlan": {
+      "allOf": [
+        { "$ref": "#/$defs/segmentFields" },
+        {
+          "type": "object",
+          "required": ["name", "reason"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "reason": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "segment": {
+      "allOf": [
+        { "$ref": "#/$defs/segmentFields" },
+        {
+          "type": "object",
+          "required": ["time", "type", "name"],
+          "properties": {
+            "rain_plan": { "$ref": "#/$defs/rainPlan" }
+          }
+        }
+      ]
     }
   },
   "properties": {
