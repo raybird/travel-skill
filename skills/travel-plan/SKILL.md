@@ -1,142 +1,242 @@
 ---
 name: travel-plan
-description: 為台灣旅遊設計的智慧行程規劃技能。支援自由輸入必訪景點、自然語言討論行程順序、依同行成員需求與固定時間點排程、附雨天備案與查證來源，並可輸出 Markdown、Mobile HTML、JSON 三種格式。當使用者需要規劃台灣旅遊行程、安排景點順序、討論旅遊路線，或因天氣、時間、成員變動而調整既有行程時使用此技能。
+description: 為台灣旅遊設計的可重複執行智慧行程規劃技能。支援互動與 batch 模式、固定 reference date、外部資料查證與 snapshot replay、同行成員需求、固定時間倒推、雨天備案，以及 deterministic JSON → Markdown / Mobile HTML 輸出。當使用者需要規劃或調整台灣旅遊行程，或 Agent/CI 需要可驗證、可重播的旅遊規劃流程時使用此技能。
 license: MIT
-compatibility: Designed for Agent Skills platform. Works with LLMs capable of tool calling and conversational interaction. Output scripts require bash and jq. Web access is recommended for verifying opening hours, prices, and weather forecasts.
+compatibility: Designed for Agent Skills platform. Works with LLMs capable of tool calling and conversational interaction. Output scripts require bash and jq 1.6+. Web access is recommended for live research but snapshot/offline replay is supported.
 metadata:
   author: travel-skills
-  version: "1.1.0"
-  tags: travel, taiwan, itinerary, planning, 旅遊, 行程規劃
+  version: "1.2.0"
+  tags: travel, taiwan, itinerary, planning, reproducible, agent-skill, 旅遊, 行程規劃
 ---
 
 # Travel Plan Agent Skill
 
 ## Overview
 
-This skill plans Taiwan travel itineraries through conversation and renders them as Markdown, Mobile HTML, or JSON. Plans account for who is traveling, fixed times the trip must respect, weather, and verifiable facts.
+This skill plans Taiwan travel itineraries through one canonical data model and renders Markdown, Mobile HTML, or JSON from that model.
+
+It is designed as an executable Agent Skill, not a prompt template. Separate live research from deterministic planning artifacts: external facts may change, but once the canonical itinerary and evidence are fixed, validation and rendering must be repeatable.
+
+Read [Execution Contract](references/execution-contract.md) before implementing a batch integration or replay workflow.
 
 ## When to Use
 
-- User wants to plan a trip in Taiwan or arrange the order of attractions
-- User asks for rest stop, dining, route, or transport recommendations
-- User wants an existing itinerary adjusted for weather, a new deadline, or a change in travelers
-- User requests the itinerary in a specific format
+- User wants to plan a trip in Taiwan or arrange attraction order
+- User asks for rest stop, dining, route, lodging-area, or transport recommendations
+- User wants an existing itinerary adjusted for weather, a deadline, or traveler changes
+- User requests Markdown, Mobile HTML, or JSON output
+- Another agent, workflow, or CI job needs a machine-readable and reproducible itinerary pipeline
+
+## Execution Modes
+
+### Interactive
+
+Use normal conversation to collect only information that materially changes the plan. Unknown non-critical values may be handled with explicit assumptions. Keep one canonical itinerary JSON through every revision.
+
+### Batch
+
+Use `schemas/request.schema.json` as the preferred input contract. Do not ask follow-up questions and do not silently invent required facts. Missing hard requirements produce a `needs_input` result; unresolved external facts follow the selected research policy.
+
+Batch/final output MUST pass strict validation before it is described as ready.
+
+## State Machine
+
+Every run follows the same conceptual phases:
+
+`INGEST → RESEARCH → PLAN → VALIDATE → RENDER → COMPLETE`
+
+Do not independently compose separate Markdown and HTML plans. Both must derive from the same canonical itinerary JSON.
 
 ## Workflow
 
-### Step 1: Collect Must-Visit Attractions
+### Step 1: Ingest the Request
 
-- Accept free-text input (e.g., 「想去九份、野柳、淡水」)
-- Ask which are must-visit and which are nice-to-visit
-- Read the list back for confirmation
+Collect or normalize:
 
-**Done when:** the user has confirmed the list and every attraction is marked must-visit or nice-to-visit.
+- trip duration and dates
+- starting point and transportation
+- attractions, each marked `must` or `nice`
+- travelers: id/label, age group or role, interests, stamina/mobility needs
+- fixed times: `depart_after`, `arrive_by`, or other hard constraints
+- lodging: check-in/out, parking, luggage drop when relevant
+- pace and other preferences that materially affect scheduling
+- execution settings for automation: mode, reference date, research policy, requested formats
 
-### Step 2: Confirm Trip Parameters
+For replayable runs, resolve relative phrases against an explicit `reference_date`; do not depend on an implicit system date.
 
-- **Duration and dates**
-- **Starting point and transportation**
-- **Travelers**: for each person, what to call them, age group or role, interests, and health or stamina needs (heat sensitivity, frequent rest, mobility). Headcount decides vehicle size.
-- **Fixed times**: the earliest departure (e.g., only after a work shift ends) and any arrive-by deadline (e.g., back home for an evening class)
-- **Lodging**: check-in and check-out times, parking, and whether the car and luggage can be dropped off before check-in
-- **Weather**: the forecast for the travel dates, per Planning Rules 3 and 7
+**Done when:** every material field has a user value, a recorded assumption, or is explicitly unknown. In batch mode, a missing hard requirement stops the run as `needs_input`.
 
-**Done when:** every item above has an answer from the user, or is shown to the user as unknown along with the assumption you will plan with.
+### Step 2: Research External Facts
 
-### Step 3: Discuss Itinerary Order
+Verify only facts needed to make the itinerary feasible or useful: opening hours, closures, prices, booking requirements, weather, exhibitions, and transport conditions.
 
-- Propose a route based on geography and the fixed times
-- Present route options with their trade-offs (Planning Rule 4)
-- Ask about pace and direction preferences
+Research policies:
 
-**Done when:** the user has chosen an order and, where routes differ, a route.
+- `live`: query current sources and record evidence
+- `snapshot`: use supplied evidence without silently refreshing it
+- `offline`: do not query external sources; unresolved claims become `to_verify`
 
-### Step 4: Generate Itinerary
+Every confirmed external fact should carry a source title, URL, and check date. If it cannot be confirmed, state exactly what remains to verify.
 
-Build the day-by-day plan with travel times, visit durations, rest stops, and meals, applying every Planning Rule below.
+**Done when:** blocking facts are verified or explicitly unresolved according to policy.
 
-**Done when:** each Planning Rule is satisfied, or the reason it does not apply has been stated to the user.
+### Step 3: Choose Route and Schedule
 
-### Step 5: Output
+- Cluster attractions geographically.
+- Apply hard time constraints before soft preferences.
+- Compare meaningful route alternatives by time, distance, comfort, and congestion risk.
+- Back-plan from `arrive_by` deadlines.
+- Include queue, parking, ticketing, luggage, ride-hail, and meal-wait buffers.
+- Add rest stops based on driving length and traveler needs.
+- Give weather-sensitive segments a rain plan.
 
-Render through the script pipeline (all scripts require `jq`):
+Record concise user-facing planning choices in `decisions`; record missing-input defaults in `assumptions`. These are rationale records, not hidden chain-of-thought.
 
-1. Build the itinerary JSON following [Output Formats](references/output-formats.md). A complete example: `examples/taipei-family-3days.json`.
-2. Normalize and check it:
-   ```bash
-   scripts/format-json.sh itinerary.json normalized.json
-   ```
-   Warnings go to stderr: malformed times, unknown segment types, `highlights` keys that match no traveler, segments scheduled past an `arrive_by` deadline, and similar.
-3. Render the requested formats:
-   ```bash
-   scripts/format-html.sh normalized.json itinerary.html
-   scripts/format-markdown.sh normalized.json itinerary.md
-   ```
+**Done when:** one canonical day-by-day itinerary exists and every hard constraint is represented.
+
+### Step 4: Build Canonical Itinerary JSON
+
+Follow `schemas/itinerary.schema.json` and [Output Formats](references/output-formats.md).
+
+The canonical JSON is the single source of truth for all artifacts. Preserve:
+
+- `meta.revision`
+- `meta.reference_date` and research policy when available
+- travelers, lodging, constraints
+- `assumptions` and `decisions`
+- `changes`
+- segment sources / `to_verify`
+- rain plans
+
+### Step 5: Validate
+
+During interactive drafting:
+
+```bash
+scripts/format-json.sh itinerary.json normalized.json
+```
+
+Warnings are allowed while the user is still editing the trip.
+
+Before batch/final publication:
+
+```bash
+scripts/format-json.sh --strict itinerary.json normalized.json
+```
+
+Strict mode exits `2` when semantic lint messages exist and does not write publishable output.
+
+For a reproducible publication timestamp, let the caller supply it:
+
+```bash
+scripts/format-json.sh --strict \
+  --generated-at 2026-09-16T06:30:00Z \
+  itinerary.json normalized.json
+```
+
+Do not use `--stamp-now` in a replay/golden-test path.
+
+**Done when:** strict validation passes, or every remaining issue is returned as `invalid` instead of being silently ignored.
+
+### Step 6: Render
+
+Render only from the normalized canonical JSON:
+
+```bash
+scripts/format-html.sh normalized.json itinerary.html
+scripts/format-markdown.sh normalized.json itinerary.md
+```
 
 | Format | Characteristics |
-|--------|-----------------|
-| Markdown | Day-by-day tables with a rain-plan column; suited to printing and archiving |
-| Mobile HTML | One self-contained file that works offline: Day tabs, sunny/rain plan toggle, departure-board style times, color chips per traveler, 19px body text, Google Maps capsule buttons. The monospace time font loads JetBrains Mono when online and falls back to the system monospace font offline. |
-| JSON | The normalized data model, for storage or other tools |
+|---|---|
+| Markdown | Day-by-day tables with rain plan column; useful for printing/archiving |
+| Mobile HTML | Self-contained offline file with Day tabs, sunny/rain toggle, large type, traveler chips, map buttons |
+| JSON | Canonical normalized model for storage, replay, integrations, and tests |
 
-**Done when:** `format-json.sh` reports no warnings (or each remaining warning has been explained to the user) and every requested file has been generated.
+### Step 7: Revise
 
-### Step 6: Iterate and Refine
+For each user-approved change:
 
-For each adjustment, update the JSON, add an entry to `changes` (rendered as a green 「✅ 修正」 box in HTML), and re-run Step 5.
+1. update the canonical JSON;
+2. append a user-facing entry to `changes`;
+3. increment `meta.revision` when the plan is versioned externally;
+4. rerun strict validation for final output;
+5. regenerate every requested artifact.
 
-**Done when:** the regenerated outputs reflect the change and `changes` lists it.
+Never patch only one rendered format.
 
 ## Planning Rules
 
-1. **Back-plan from deadlines.** With an `arrive_by` constraint, schedule backwards from the deadline including drive time and buffer. On the last day, place sights along the return direction so the long drive does not end right at the deadline.
-2. **Budget buffers.** Allow time for ticketing and queues, observation-deck elevators, ride-hail pickup (about 5–10 minutes), parking, check-in and luggage drop, and peak-hour restaurant waits. Record it in the segment's `buffer_minutes`.
-3. **Plan for weather.** Give every outdoor or weather-sensitive segment a `rain_plan`, including the reason to switch.
-4. **Show route trade-offs.** When routes differ, list time, distance, comfort, and congestion risk for each, and let the user choose. State the cost of the recommended option explicitly, e.g., the smoother freeway takes 20–30 minutes longer.
-5. **Size transport to the group.** A standard Taiwan taxi carries up to 4 passengers; for 5 or more, book a 6–7 seat vehicle through an app or split into two cars. For MRT legs, give the lines, transfer stations, and exit numbers.
-6. **Tailor per traveler.** Put each traveler's highlight for a segment in `highlights`, keyed by traveler id.
-7. **Cite or flag facts.** Opening hours, prices, exhibitions, and weather carry `sources` (`title`, `url`, `checked_at`). Anything you could not check goes in `to_verify`, telling the user exactly what to confirm. Call a fact confirmed only when a source backs it.
-8. **Record revisions.** Every change to an agreed itinerary adds an entry to `changes`.
-9. **Schedule rest stops.** Add a break when a leg exceeds 1 hour, when a meal time (around 12:00 or 18:00) falls on the road, or when a traveler's stamina needs call for it.
+1. **Back-plan from deadlines.** With an `arrive_by` constraint, schedule backwards from the deadline including drive time and buffer. Keep the last day moving toward the return direction.
+2. **Budget buffers.** Allow time for ticketing/queues, elevators, ride-hail pickup, parking, check-in/luggage drop, and peak restaurant waits. Record `buffer_minutes`.
+3. **Plan for weather.** Every outdoor or weather-sensitive segment gets a `rain_plan` and a switch reason.
+4. **Show route trade-offs.** When routes differ materially, compare time, distance, comfort, and congestion risk; state the cost of the chosen option.
+5. **Size transport to the group.** A standard Taiwan taxi generally carries up to 4 passengers; for 5+ use an appropriate larger vehicle or split the group. For MRT legs include lines/transfers/exits when useful.
+6. **Tailor per traveler.** Put per-person segment value in `highlights`, keyed by traveler id.
+7. **Cite or flag facts.** Confirmed external facts carry evidence; unchecked facts go in `to_verify`.
+8. **Record revisions.** Every change to an agreed itinerary adds a `changes` entry.
+9. **Schedule rest stops.** Add a break for long driving legs, meal-time conflicts, or traveler stamina needs.
+10. **Record assumptions.** Never hide a default that materially affects batch output.
+11. **Keep a deterministic boundary.** Once canonical JSON is fixed, normalization/rendering must not depend on current wall-clock time or a fresh web lookup.
+12. **Publish only validated output.** Batch/final output must pass strict validation.
 
-Sample dialogue for each rule, including deadlines discovered mid-conversation and "did you verify this?" questions: [Conversation Guide](references/conversation-guide.md).
+## Machine Contracts
+
+- Canonical request: `schemas/request.schema.json`
+- Canonical itinerary: `schemas/itinerary.schema.json`
+- Execution semantics: `references/execution-contract.md`
+- Output model: `references/output-formats.md`
+- Conversation patterns: `references/conversation-guide.md`
+- Taiwan research sources: `references/taiwan-data-sources.md`
+
+## Failure States
+
+Use stable states for agent integrations:
+
+- `needs_input`: hard request data is missing
+- `needs_research`: a blocking external fact cannot be established under current policy
+- `invalid`: canonical itinerary fails strict validation
+- `ready`: strict validation passes and requested artifacts may be rendered
 
 ## Examples
 
-### Example 1: Day Trip
+### Interactive Day Trip
 
 **User:** 「想去九份和野柳，一日遊怎麼安排？」
 
-1. Confirm attractions, starting point, and travelers
-2. Compare 野柳→九份 and 九份→野柳, with reasons
-3. Add a lunch stop on the way and buffers at each site
-4. Generate the requested formats
+1. Ingest starting point, travelers, date, priorities, and any deadline.
+2. Research hours/closures if a real date is supplied.
+3. Compare route order.
+4. Build one canonical itinerary.
+5. Draft-validate while discussing.
+6. Strict-validate and render the requested format when finalized.
 
-### Example 2: Multi-Day Trip with a Deadline
+### Batch Replay
 
-**User:** 「台中出發去台北三天兩夜，一家五口，最後一天傍晚要回台中上才藝課。」
+Given a saved canonical itinerary and research snapshot:
 
-1. Record the five travelers with their interests and needs, and the Day 3 `arrive_by`
-2. Plan transport for five (6–7 seat ride-hail or MRT)
-3. Back-plan Day 3 from the deadline and keep its sights toward the return route
-4. Attach rain plans to outdoor segments and sources to hours and prices
-5. Run the Step 5 pipeline; `examples/taipei-family-3days.json` shows the resulting data
+```bash
+scripts/format-json.sh --strict itinerary.json normalized.json
+scripts/format-html.sh normalized.json itinerary.html
+scripts/format-markdown.sh normalized.json itinerary.md
+```
+
+Running the first command repeatedly with identical input and formatter version must produce byte-identical normalized JSON unless the caller explicitly supplies different metadata.
 
 ## Limitations
 
-- **Geographic scope**: focused on Taiwan; other destinations have limited data
-- **Real-time information**: with web tools available, check current weather forecasts and closure notices and record the source and query date. Without them, mark those facts in `to_verify` and remind the user to check the 中央氣象署 forecast a few days before departure.
-- **Bookings**: recommendations only; no reservations or ticket purchases
-- **Budget**: no cost calculation beyond prices quoted from sources
+- **Geographic scope:** optimized for Taiwan; other destinations have limited source guidance.
+- **Live data:** weather, closures, traffic, and prices naturally change. Repeatability applies after evidence is fixed; `live` research itself is not promised to return identical facts later.
+- **Bookings:** recommendations only unless the host Agent has a separate authorized booking capability.
+- **Budget:** no full trip-cost optimizer yet; quoted prices remain source-backed facts.
+- **Route solving:** current implementation applies planning rules and validation but is not a mathematical VRP/TSP optimizer.
 
-## Best Practices
+## Validation of the Skill Itself
 
-- Give the reason behind each recommendation (e.g., 「建議上午先去野柳，因為…」)
-- Include practical details: parking, restrooms, accessibility, best photo spots
-- Use place names as commonly used in Taiwan
+Repository checks are run with:
 
-## Tools and Resources
+```bash
+bash skills/travel-plan/validate.sh
+```
 
-- Tourism, weather (中央氣象署), and transport (TDX, 高速公路 1968) data: [Taiwan Data Sources](references/taiwan-data-sources.md)
-- Output specifications and JSON schema: [Output Formats](references/output-formats.md)
-- Interaction strategies and scenarios: [Conversation Guide](references/conversation-guide.md)
+The validator checks contract files, schemas, strict validation, deterministic canonical JSON, renderer golden files, and HTML escaping.
