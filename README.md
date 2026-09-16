@@ -18,6 +18,7 @@ INGEST → RESEARCH → PLAN → VALIDATE → RENDER → COMPLETE
 - **Batch 模式**：可由另一個 Agent、workflow 或 CI 直接給 JSON request，不依賴人工追問。
 - **Canonical Request Schema**：`schemas/request.schema.json`。
 - **Canonical Itinerary Schema**：`schemas/itinerary.schema.json`。
+- **Stable Result Envelope**：`schemas/result.schema.json`，固定 `needs_input / needs_research / invalid / ready` 的機器回傳形狀。
 - **單一資料來源**：Markdown、Mobile HTML、JSON 都由同一份 itinerary JSON 產生。
 - **Deterministic normalization**：預設不偷偷寫入現在時間；同一輸入與 formatter 版本可得到相同 normalized JSON。
 - **Strict validation**：final / batch 輸出可作為 CI publish gate。
@@ -41,11 +42,13 @@ travel-skill/
 │       ├── validate.sh
 │       ├── schemas/
 │       │   ├── request.schema.json
-│       │   └── itinerary.schema.json
+│       │   ├── itinerary.schema.json
+│       │   └── result.schema.json
 │       ├── assets/
 │       │   ├── html-template.html
 │       │   └── style.css
 │       ├── examples/
+│       │   ├── taipei-family-request.json
 │       │   ├── taipei-family-3days.json
 │       │   ├── taipei-family-3days.html
 │       │   ├── taipei-family-3days.md
@@ -88,6 +91,20 @@ Skill Linker 會偵測 `skills` 目錄並讓你選擇要安裝到哪個 Agent。
 > 「一家五口從台中去台北玩三天，最後一天 17:30 前一定要回台中，幫我做有雨備的手機行程。」
 
 Agent 會依 `SKILL.md` 與 execution contract 收集需求、查證資料、建立 canonical itinerary、驗證，再產生輸出。
+
+## 🤖 Batch 使用
+
+`examples/taipei-family-request.json` 示範完整 request。Batch agent 應依 `result.schema.json` 回傳穩定狀態：
+
+```json
+{
+  "status": "ready",
+  "request_id": "demo-taipei-family-2026-10",
+  "itinerary": {}
+}
+```
+
+若缺必要輸入，回傳 `needs_input` 與 `missing_fields`；外部資訊不足時回 `needs_research`；strict validation 未通過則回 `invalid` 與 `issues`。
 
 ## ⚙️ Reproducible Pipeline
 
@@ -162,6 +179,7 @@ GitHub Actions 也會執行相同 validator。
 
 ## 輸出範例
 
+- `skills/travel-plan/examples/taipei-family-request.json`
 - `skills/travel-plan/examples/taipei-family-3days.json`
 - `skills/travel-plan/examples/taipei-family-3days.html`
 - `skills/travel-plan/examples/taipei-family-3days.md`
