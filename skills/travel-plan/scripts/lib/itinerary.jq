@@ -1,8 +1,9 @@
 # Travel Plan - shared jq helpers for the itinerary JSON schema
 # (references/output-formats.md). Loaded with: jq -L scripts/lib 'include "itinerary"; ...'
 
-def schema_version: "1.1.0";
+def schema_version: "1.2.0";
 def segment_types: ["attraction", "break", "meal", "travel", "optional"];
+def constraint_types: ["depart_after", "arrive_by", "other"];
 def traveler_colors: ["rose", "blue", "cyan", "violet", "amber", "green", "orange", "slate"];
 
 # ---- encoding -------------------------------------------------------------
@@ -17,6 +18,8 @@ def present: . != null and . != "" and . != [] and . != {};
 def is_safe_url: type == "string" and test("^https?://");
 
 def safe_url: select(is_safe_url);
+
+def is_date: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$");
 
 # ---- time -----------------------------------------------------------------
 
@@ -107,7 +110,7 @@ def map_url_for:
     (.map_url | safe_url)
     // (place_query | select(present) | "https://www.google.com/maps/search/?api=1&query=\(@uri)");
 
-# Directions to this segment; origin/waypoints pin the route (e.g. a service area on a chosen freeway)
+# Directions to this segment; origin/waypoints pin the route (e.g. a service area on the chosen freeway)
 def directions_url_for:
     . as $segment
     | (.transit // {}) as $transit
@@ -125,7 +128,7 @@ def directions_url_for:
 # ---- normalize & lint -----------------------------------------------------
 
 def normalize:
-    .meta = ({ generator: "travel-plan-agent", version: schema_version } + (.meta // {}))
+    .meta = ((.meta // {}) + { generator: "travel-plan-agent", version: schema_version })
     | .trip = ({ name: "旅遊行程" } + (.trip // {}))
     | .itinerary = [
         (.itinerary // []) | to_entries[]
@@ -138,7 +141,9 @@ def normalize:
       ]
     | .lodging = (.lodging // [])
     | .constraints = (.constraints // [])
-    | .changes = (.changes // []);
+    | .changes = (.changes // [])
+    | .assumptions = (.assumptions // [])
+    | .decisions = (.decisions // []);
 
 def has_rain_plans: [.itinerary[]?.segments[]? | select(.rain_plan)] | length > 0;
 
@@ -150,25 +155,43 @@ def summarize:
         rest_stops_recommended: ([$segments[] | select(.type == "break" or .type == "meal")] | length)
       } + (.summary // {});
 
-# Human-readable warnings for an itinerary; an empty array means clean
+# Human-readable semantic problems for an itinerary; an empty array means clean.
+# Draft mode prints these as warnings; strict mode treats them as blocking errors.
 def lint:
-    normalize
-    | [.travelers[].id] as $ids
+    . as $raw
+    | normalize
+    | [.travelers[].id | select(present)] as $ids
     | (.itinerary | map({ key: (.day | tostring), value: .segments }) | from_entries) as $days
+    | def source_checks($where):
+        ((.sources // [])[]
+          | (if (.url | is_safe_url | not) then "\($where): sources 需要 http(s) 網址" else empty end),
+            (if .checked_at != null and (.checked_at | is_date | not) then "\($where): sources.checked_at 必須是 YYYY-MM-DD" else empty end));
     | def check_segment($where):
         (if (.time | is_hhmm | not) then "\($where): time 必須是 HH:MM" else empty end),
         (if (.type | IN(segment_types[]) | not) then "\($where): type 必須是 \(segment_types | join(" / "))" else empty end),
+        (if (.name | present | not) then "\($where): name 不可空白" else empty end),
+        (if .duration_minutes != null and ((.duration_minutes | type) != "number" or .duration_minutes < 0) then "\($where): duration_minutes 必須是非負數" else empty end),
+        (if .buffer_minutes != null and ((.buffer_minutes | type) != "number" or .buffer_minutes < 0) then "\($where): buffer_minutes 必須是非負數" else empty end),
+        (if .transit.duration_minutes != null and ((.transit.duration_minutes | type) != "number" or .transit.duration_minutes < 0) then "\($where): transit.duration_minutes 必須是非負數" else empty end),
         ((.highlights // {}) | keys[] | select(IN($ids[]) | not) | "\($where): highlights 的「\(.)」不在 travelers 裡"),
-        ((.sources // [])[] | select(.url | is_safe_url | not) | "\($where): sources 需要 http(s) 網址"),
+        source_checks($where),
         (if (.transit.call_at != null) and (.transit.call_at | is_hhmm | not) then "\($where): transit.call_at 必須是 HH:MM" else empty end);
     [
+      (if (($raw.trip.name // "") | present | not) then "trip.name 不可空白" else empty end),
+      (if (.itinerary | length) == 0 then "itinerary 至少需要一天" else empty end),
+      (if .trip.duration_days != (.itinerary | length) then "trip.duration_days 與 itinerary 天數不一致" else empty end),
+      ([.travelers[].id | select(present)] | group_by(.)[] | select(length > 1) | "travelers.id 重複：「\(.[0])」"),
+      ([.itinerary[].day] | group_by(.)[] | select(length > 1) | "itinerary.day 重複：Day \(.[0])"),
       (
         .itinerary[] | .day as $day
         | .segments | to_entries[]
         | "Day \($day) 第 \(.key + 1) 項「\(.value.name // "")」" as $where
-        | .value
-        | check_segment($where),
-          (select(.rain_plan) | .rain_plan | .time //= "00:00" | .type //= "attraction" | check_segment("\($where) 的雨備"))
+        | .value as $segment
+        | $segment | check_segment($where),
+          (select(.rain_plan)
+            | ({ time: $segment.time, type: $segment.type } + .rain_plan)
+            | check_segment("\($where) 的雨備"),
+              (if (.reason | present | not) then "\($where) 的 rain_plan.reason 不可空白" else empty end))
       ),
       (
         .itinerary[] | .day as $day
@@ -183,6 +206,7 @@ def lint:
         | ($days[.day | tostring] // null) as $segments
         | if $segments == null then "constraints: Day \(.day) 不在 itinerary 裡"
           elif (.time | is_hhmm | not) then "constraints: Day \(.day) 的 time 必須是 HH:MM"
+          elif (.kind | IN(constraint_types[]) | not) then "constraints: kind 必須是 \(constraint_types | join(" / "))"
           elif .kind == "arrive_by" and ($segments | length) > 0
                and (($segments | last | .time | minutes_of_day) // 0) > (.time | minutes_of_day) then
               "Day \(.day) 最後一項 \($segments | last | .time) 晚於截止時間 \(.time)（\(.description // "arrive_by")）"
@@ -193,8 +217,12 @@ def lint:
           end
       ),
       (
-        .itinerary[] | select(.weather) | select(.weather.source == null or .weather.checked_at == null)
-        | "Day \(.day) 的 weather 需要 source 與 checked_at"
+        .itinerary[] | select(.weather)
+        | if .weather.source == null or .weather.checked_at == null then
+            "Day \(.day) 的 weather 需要 source 與 checked_at"
+          elif (.weather.checked_at | is_date | not) then
+            "Day \(.day) 的 weather.checked_at 必須是 YYYY-MM-DD"
+          else empty end
       )
     ];
 
