@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/raybird/travel-skill/blob/main/skills/travel-plan/schemas/result.schema.json",
+  "title": "Travel Plan Agent Result Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status"],
+  "properties": {
+    "status": {
+      "enum": ["needs_input", "needs_research", "invalid", "ready"]
+    },
+    "request_id": { "type": "string" },
+    "missing_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "path": { "type": "string" },
+          "message": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["error", "warning", "info"] }
+        }
+      }
+    },
+    "itinerary": {
+      "type": "object",
+      "description": "Canonical itinerary. In a standalone validator this may be validated separately with itinerary.schema.json."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["format"],
+        "properties": {
+          "format": { "enum": ["json", "markdown", "html"] },
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "needs_input" } }, "required": ["status"] },
+      "then": {
+        "required": ["missing_fields"],
+        "properties": { "missing_fields": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["needs_research", "invalid"] } }, "required": ["status"] },
+      "then": {
+        "required": ["issues"],
+        "properties": { "issues": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "ready" } }, "required": ["status"] },
+      "then": { "required": ["itinerary"] }
+    }
+  ]
+}
