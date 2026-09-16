@@ -1,231 +1,334 @@
 # Output Formats Specification
 
-This document defines the itinerary JSON that the Travel Plan agent builds, and the three outputs rendered from it: Markdown, Mobile HTML, and JSON.
+This document defines the canonical itinerary model and the three artifacts rendered from it: JSON, Markdown, and Mobile HTML.
+
+For execution semantics, replay behavior, and batch failure states, read [Execution Contract](execution-contract.md). Machine-readable contracts live in `schemas/request.schema.json` and `schemas/itinerary.schema.json`.
 
 ## Pipeline
 
-All three formats come from one itinerary JSON. Build the JSON first, then render:
+All rendered formats MUST come from one canonical itinerary JSON.
+
+Draft mode:
 
 ```bash
-scripts/format-json.sh itinerary.json normalized.json      # normalize + warnings on stderr
+scripts/format-json.sh itinerary.json normalized.json
+```
+
+Final / batch mode:
+
+```bash
+scripts/format-json.sh --strict itinerary.json normalized.json
 scripts/format-html.sh normalized.json itinerary.html
 scripts/format-markdown.sh normalized.json itinerary.md
 ```
 
-- All scripts read stdin when no input file is given and write stdout when no output file is given.
-- All scripts require `jq` (1.6+). Shared helpers live in `scripts/lib/` (`common.sh`, `itinerary.jq`).
-- A complete example with every field: `examples/taipei-family-3days.json`, plus its rendered `.html` and `.md`.
+All scripts read stdin when no input file is given and write stdout when no output file is given. They require Bash and `jq` 1.6+.
+
+## Determinism
+
+`format-json.sh` is deterministic by default. It does not insert the current wall-clock time.
+
+If a publication timestamp is needed, prefer a caller-controlled value:
+
+```bash
+scripts/format-json.sh --strict \
+  --generated-at 2026-09-16T06:30:00Z \
+  itinerary.json normalized.json
+```
+
+`--stamp-now` exists for convenience but makes the normalized JSON intentionally non-replayable and should not be used in golden tests or snapshot replay.
+
+For identical canonical input and formatter version, normalized JSON must be byte-stable.
 
 ---
 
-## 1. JSON Format
+# 1. Canonical JSON
 
-### Purpose
-Structured data for programmatic use, storage, and as the single source for the other formats.
+## Purpose
 
-### File Extension
-`.json`
+The JSON document is the source of truth for storage, replay, validation, integrations, Markdown, and Mobile HTML.
 
-### Schema
-
-Only `trip.name` and `itinerary[].segments[]` are needed to render something useful; every other field is optional and v1.0 itineraries still render.
+## Top-level shape
 
 ```json
 {
   "meta": {
-    "generated_at": "ISO8601 timestamp (filled by format-json.sh)",
     "generator": "travel-plan-agent",
-    "version": "1.1.0",
-    "revision": "number (optional, 第幾版)"
+    "version": "1.2.0",
+    "revision": 1,
+    "request_id": "optional caller id",
+    "reference_date": "2026-09-16",
+    "research_policy": "live | snapshot | offline",
+    "generated_at": "optional caller-controlled ISO8601 timestamp"
   },
   "trip": {
     "name": "string",
-    "duration_days": "number",
-    "date": "YYYY-MM-DD (first day)",
+    "duration_days": 3,
+    "date": "YYYY-MM-DD",
     "starting_point": "string",
     "transportation": "string"
   },
-  "travelers": [
-    {
-      "id": "string (used as highlights key)",
-      "label": "string, e.g. 姊姊",
-      "emoji": "string (optional)",
-      "color": "rose | blue | cyan | violet | amber | green | orange | slate (optional)",
-      "profile": "string, e.g. 國二、駕駛",
-      "interests": ["string"],
-      "needs": ["string: health, stamina, mobility"]
-    }
-  ],
-  "lodging": [
-    {
-      "name": "string",
-      "address": "string",
-      "nights": ["number: day numbers"],
-      "check_in": "HH:MM",
-      "check_out": "HH:MM",
-      "parking": "string",
-      "notes": ["string: luggage drop, facilities"],
-      "map_url": "string (optional)",
-      "sources": [{ "title": "string", "url": "string", "checked_at": "YYYY-MM-DD" }]
-    }
-  ],
-  "constraints": [
-    {
-      "day": "number",
-      "time": "HH:MM",
-      "kind": "depart_after | arrive_by | other",
-      "description": "string"
-    }
-  ],
-  "changes": [
-    { "day": "number (optional; omit for trip-wide)", "title": "string", "detail": "string" }
-  ],
-  "itinerary": [
-    {
-      "day": "number",
-      "title": "string (day theme)",
-      "date": "YYYY-MM-DD",
-      "weather": {
-        "summary": "string",
-        "temperature": "string, e.g. 24–29°C",
-        "rain_chance": "number (percent)",
-        "source": "string",
-        "checked_at": "YYYY-MM-DD"
-      },
-      "segments": ["Segment"],
-      "travel_notes": "string"
-    }
-  ],
-  "summary": {
-    "total_attractions": "number (computed when omitted)",
-    "total_estimated_hours": "number (computed when omitted)",
-    "rest_stops_recommended": "number (computed when omitted)",
-    "notes": ["string: travel tips"]
-  }
+  "travelers": [],
+  "lodging": [],
+  "constraints": [],
+  "changes": [],
+  "assumptions": [],
+  "decisions": [],
+  "itinerary": [],
+  "summary": {}
 }
 ```
 
-**Segment**
+Only `trip.name` and at least one itinerary day with segments are needed to render a basic document, but final batch output should satisfy the stricter execution contract.
+
+## Travelers
 
 ```json
 {
-  "time": "HH:MM",
-  "type": "attraction | break | meal | travel | optional",
-  "name": "string",
-  "address": "string",
-  "duration_minutes": "number",
-  "coordinates": { "lat": "number", "lng": "number" },
-  "map_url": "string (optional; generated from coordinates/address/name)",
-  "notes": "string",
-  "tips": ["string"],
-  "buffer_minutes": "number: queue/ticket/wait time already included in the schedule",
-  "buffer_notes": "string",
-  "transit": {
-    "mode": "drive | mrt | bus | train | hsr | taxi | rideshare | walk",
-    "lines": ["BL", "R", { "code": "R", "name": "紅線" }],
-    "duration_minutes": "number",
-    "summary": "string: transfers, exits",
-    "call_at": "HH:MM (when to book the ride)",
-    "origin": "string (optional)",
-    "waypoints": ["string (optional; pins the route, e.g. a service area on the chosen freeway)"],
-    "map_url": "string (optional; overrides generated directions)"
-  },
-  "highlights": { "<traveler id>": "string" },
-  "sources": [{ "title": "string", "url": "https://...", "checked_at": "YYYY-MM-DD" }],
-  "to_verify": "string: what the user still needs to confirm",
-  "rain_plan": "Segment without rain_plan, plus reason (time and type fall back to the parent)"
+  "id": "kid",
+  "label": "妹妹",
+  "emoji": "🧒",
+  "color": "cyan",
+  "profile": "小一",
+  "interests": ["動物", "太空"],
+  "needs": ["午後容易累"]
 }
 ```
 
-### Field Rules
+`id` is used as the key in segment `highlights`. If `color` is omitted, normalization assigns a stable color based on traveler order.
 
-| Field | Rule |
-|-------|------|
-| `transit` | How to reach this segment from the previous one |
-| `rain_plan.reason` | Why to switch, e.g. 「午後雷雨時戶外設施可能暫停」 |
-| `buffer_minutes` | Already counted inside the schedule, not added on top |
-| `sources` / `to_verify` | Every opening hour, price, exhibition, or forecast has a source; anything unchecked goes in `to_verify` |
-| `constraints.arrive_by` | The day's last segment must start no later than this time |
-| `constraints.depart_after` | The day's first segment must start no earlier than this time |
-| `transit.lines` | Codes default to Taipei Metro names (BL 板南線, R 淡水信義線, G 松山新店線, O 中和新蘆線, BR 文湖線, Y 環狀線, A 機場捷運, V 淡海輕軌, K 安坑輕軌); use `{code, name}` for other systems |
+Supported automatic colors:
 
-### Type Values
+`rose | blue | cyan | violet | amber | green | orange | slate`
 
-| Type | Description |
-|------|-------------|
-| `attraction` | Must-visit tourist spot |
-| `break` | Rest stop, rest area |
-| `meal` | Restaurant or dining |
-| `travel` | Transit between locations |
-| `optional` | Nice-to-visit if time permits |
-
-### What `format-json.sh` Does
-
-- Fills `meta.generated_at`, `generator`, `version`; numbers days; assigns traveler colors in order.
-- Computes `summary` counts unless provided.
-- Warns on stderr (exit code stays 0):
-  - `time` / `call_at` not `HH:MM`, unknown `type`
-  - `highlights` keys that match no traveler
-  - `sources` without an `http(s)` URL
-  - segments out of time order
-  - last segment later than `arrive_by`, first segment earlier than `depart_after`
-  - `weather` without `source` and `checked_at`
-- Reports how many items are still `to_verify`.
-
-### Example (excerpt)
+## Lodging
 
 ```json
 {
-  "trip": { "name": "台北親子三日遊（虛構範例）", "duration_days": 3, "date": "2026-10-14", "starting_point": "台中", "transportation": "自駕＋捷運" },
-  "travelers": [
-    { "id": "mom", "label": "媽媽", "emoji": "👩", "color": "violet", "needs": ["怕悶熱"] },
-    { "id": "kid", "label": "妹妹", "emoji": "🧒", "color": "cyan", "profile": "小一" }
-  ],
-  "constraints": [
-    { "day": 3, "time": "17:30", "kind": "arrive_by", "description": "妹妹 18:00 有才藝課" }
-  ],
-  "itinerary": [
+  "name": "旅店名稱",
+  "address": "地址或區域",
+  "nights": [1, 2],
+  "check_in": "15:00",
+  "check_out": "11:00",
+  "parking": "停車說明",
+  "notes": ["可否先寄放行李"],
+  "map_url": "https://...",
+  "sources": [
     {
-      "day": 2,
-      "title": "動物園上午場與室內下午",
-      "date": "2026-10-15",
-      "weather": { "summary": "午後雷陣雨", "rain_chance": 60, "source": "中央氣象署", "checked_at": "2026-10-11" },
-      "segments": [
-        {
-          "time": "09:00",
-          "type": "attraction",
-          "name": "臺北市立動物園",
-          "duration_minutes": 180,
-          "buffer_minutes": 20,
-          "buffer_notes": "入園與遊園列車排隊",
-          "transit": { "mode": "rideshare", "duration_minutes": 30, "call_at": "08:25", "summary": "5 人叫 6 人座車直達正門" },
-          "highlights": { "kid": "企鵝館、大貓熊館", "mom": "每走一段就進室內館休息" },
-          "to_verify": "遊園列車班次與票價以官網公告為準",
-          "sources": [{ "title": "臺北市立動物園", "url": "https://www.zoo.gov.taipei/" }],
-          "rain_plan": {
-            "time": "09:30",
-            "name": "國立臺灣博物館 鐵道部園區",
-            "duration_minutes": 150,
-            "reason": "出門時已經下大雨，動物園戶外路段濕滑又耗體力"
-          }
-        }
-      ]
+      "title": "旅店官網",
+      "url": "https://...",
+      "checked_at": "2026-09-16"
     }
   ]
 }
 ```
 
+## Constraints
+
+```json
+{
+  "day": 3,
+  "time": "17:30",
+  "kind": "arrive_by",
+  "description": "18:00 前要回家"
+}
+```
+
+Kinds:
+
+- `depart_after`
+- `arrive_by`
+- `other`
+
+## Assumptions
+
+Assumptions make batch defaults explicit.
+
+```json
+{
+  "id": "a1",
+  "field": "preferences.pace",
+  "value": "balanced",
+  "reason": "request omitted pace; batch default applied"
+}
+```
+
+An assumption is never evidence that an external fact is true.
+
+## Decisions
+
+Decisions record concise, user-facing planning rationale.
+
+```json
+{
+  "id": "d1",
+  "topic": "route-order",
+  "decision": "野柳 → 九份",
+  "reason": "reduces backtracking under the Day 1 deadline",
+  "evidence": ["route-1"]
+}
+```
+
+Do not store hidden chain-of-thought. Keep only the decision, concise reason, and relevant evidence identifiers.
+
+## Day
+
+```json
+{
+  "day": 2,
+  "title": "動物園上午場與室內下午",
+  "date": "2026-10-15",
+  "weather": {
+    "summary": "午後雷陣雨",
+    "temperature": "23–28°C",
+    "rain_chance": 60,
+    "source": "中央氣象署",
+    "checked_at": "2026-10-11"
+  },
+  "segments": [],
+  "travel_notes": "string"
+}
+```
+
+## Segment
+
+```json
+{
+  "time": "09:00",
+  "type": "attraction",
+  "name": "臺北市立動物園",
+  "address": "臺北市立動物園",
+  "duration_minutes": 180,
+  "coordinates": { "lat": 25.0, "lng": 121.5 },
+  "map_url": "https://...",
+  "notes": "string",
+  "tips": ["string"],
+  "buffer_minutes": 20,
+  "buffer_notes": "入園與遊園列車排隊",
+  "transit": {
+    "mode": "rideshare",
+    "lines": [],
+    "duration_minutes": 30,
+    "summary": "6 人座車直達正門",
+    "call_at": "08:25",
+    "origin": "旅店",
+    "waypoints": [],
+    "map_url": "https://..."
+  },
+  "highlights": {
+    "kid": "企鵝館、大貓熊館"
+  },
+  "sources": [
+    {
+      "title": "臺北市立動物園",
+      "url": "https://www.zoo.gov.taipei/",
+      "checked_at": "2026-09-16",
+      "claim": "營業時間"
+    }
+  ],
+  "to_verify": "若仍有未確認事項，精確寫在這裡",
+  "rain_plan": {
+    "name": "國立臺灣博物館 鐵道部園區",
+    "duration_minutes": 150,
+    "reason": "大雨時改走室內",
+    "notes": "string"
+  }
+}
+```
+
+### Segment types
+
+- `attraction` — main attraction
+- `break` — rest stop
+- `meal` — meal or restaurant
+- `travel` — explicit travel block
+- `optional` — nice-to-visit if schedule allows
+
+### Rain plan fallback
+
+A rain plan may omit `time` and `type`; renderers fall back to the parent segment values. It must have its own `name` and a human-readable `reason`.
+
+### Transit semantics
+
+`transit` describes how to reach the current segment from the previous point. Supported modes:
+
+`drive | mrt | bus | train | hsr | taxi | rideshare | walk`
+
+For rail/MRT legs, `lines` can be strings such as `"R"` or objects like `{ "code": "R", "name": "紅線" }`.
+
+## Sources and `to_verify`
+
+Confirmed time-sensitive claims should include source metadata. Legacy data may omit `checked_at`, but new final plans should include it whenever available.
+
+If a fact could not be verified, do not turn it into an assertion. Put the unresolved item in `to_verify`.
+
+## Summary
+
+When omitted, normalization computes:
+
+```json
+{
+  "total_attractions": 4,
+  "total_estimated_hours": 11.5,
+  "rest_stops_recommended": 3,
+  "notes": []
+}
+```
+
+Caller-provided summary fields override computed values.
+
 ---
 
-## 2. Markdown Format
+# 2. Normalization and Validation
 
-### Purpose
-Standard formatted document for human readability, easy sharing, and printing.
+`format-json.sh` normalizes:
 
-### File Extension
-`.md`
+- `meta.generator = travel-plan-agent`
+- `meta.version = 1.2.0`
+- day numbers when omitted
+- traveler colors when omitted
+- empty arrays for lodging / constraints / changes / assumptions / decisions
+- summary counts
 
-### Structure
+It intentionally does not inject `generated_at` unless requested.
+
+Draft mode prints semantic warnings and still produces normalized output.
+
+Strict mode:
+
+```bash
+scripts/format-json.sh --strict input.json output.json
+```
+
+Strict mode exits `2` before writing `output.json` if semantic lint messages exist.
+
+Semantic checks include:
+
+- `HH:MM` time syntax
+- known segment and constraint kinds
+- non-empty segment names
+- duplicate traveler IDs and itinerary day numbers
+- non-negative duration/buffer values
+- highlight keys referencing known travelers
+- `http(s)` source URLs
+- malformed source check dates
+- out-of-order segment times
+- invalid day references from constraints
+- basic deadline checks
+- weather source/check-date metadata
+- trip duration matching itinerary day count
+
+`to_verify` is reported separately as unresolved work; it is not automatically a validation failure because offline/snapshot planning may intentionally preserve unknowns.
+
+---
+
+# 3. Markdown Format
+
+## Purpose
+
+Human-readable and printable itinerary.
+
+## Structure
 
 ```markdown
 # [Trip Name]
@@ -233,142 +336,84 @@ Standard formatted document for human readability, easy sharing, and printing.
 > 3天 · 10/14（三） · 台中出發 · 自駕＋捷運
 
 ## 同行成員
-| 成員 | 說明 | 興趣 | 需要留意 |
+...
 
 ## 住宿
-- **旅店名稱**（第 1、2 晚）　入住 15:00／退房 11:00
+...
 
 ## 固定時間點
-- Day 3 17:30 前抵達：說明
+...
 
 ## 修正重點
-- ✅ **標題**：說明（trip-wide changes only）
+...
 
 ---
 
-## Day X: [Day Theme] · 10/15（四）
+## Day 1: [Day Theme]
 
-> 🌦️ 天氣 · 氣溫 · 降雨 60%（來源，查詢日期）
+> 🌦️ 天氣資訊
+> ⏰ 固定時間
+> ✅ 修正
 
-> ✅ **修正：標題** — 說明（this day's changes）
-
-> ⏰ **固定時間：17:30 前抵達** — 說明
-
-### 上午 (Morning)
+### 上午
 | 時間 | 項目 | 說明 | ⛈️ 雨備 |
-|------|------|------|------|
-| HH:MM | 類型｜地點名稱 | 說明<br>交通<br>⏳ 緩衝<br>成員亮點<br>⚠️ 待確認 | **雨備地點**<br>說明<br>💡 切換原因 |
-
-### 中途 (Midday)
-### 下午 (Afternoon)
-
-交通說明：...
-
-**資料來源**
-- [標題](url)（查證日期）
-
----
-
-## 旅遊注意事項 (Travel Tips)
-- 提示項目
-
----
-
-*此行程由 Travel Plan Agent 產生*
+...
 ```
 
-### Styling Conventions
-- `#` for main title, `##` for sections and days, `###` for time periods
-- Periods: 上午 before 11:00, 中途 11:00–14:00, 下午 from 14:00; empty periods are omitted
-- The ⛈️ 雨備 column appears only on days that have a `rain_plan`
-- Multi-line details use `<br>` inside table cells
-- Horizontal rules `---` separate days
+Conventions:
 
-See `examples/taipei-family-3days.md` for full output.
+- Empty day periods are omitted.
+- The rain-plan column appears only when that day has a rain plan.
+- Multi-line table details use `<br>`.
+- Sources appear under the relevant day.
+- `to_verify` is rendered visibly instead of being hidden.
+
+See `examples/taipei-family-3days.md`.
 
 ---
 
-## 3. Mobile HTML Format
+# 4. Mobile HTML Format
 
-### Purpose
-Phone-first itinerary to open during the trip.
+## Purpose
 
-### File Extension
-`.html`
+Phone-first itinerary that can be saved and opened during the trip.
 
-### Requirements
-- Single self-contained file: `style.css` is inlined, no local assets; works offline once saved
-- Large type: body 19px, headings 21–30px; tap targets at least 44px
-- Top tabs switch between Day 1 / Day 2 / … / 須知 instead of one long page (`#day-2` links open that day)
-- ☀️ 晴天 / ⛈️ 雨備 toggle replaces each segment with its `rain_plan`; the choice is remembered on the device
-- Times use a departure-board style: dark background, amber JetBrains Mono digits. The font loads from Google Fonts when online and falls back to the system monospace font offline
-- Each traveler keeps one color across all days (legend in the header, chips on highlights)
-- `changes` show as green 「✅ 修正」 boxes; `constraints` as amber 「⏰ 固定時間」 boxes
-- Every place gets a Google Maps capsule button; segments with `transit.origin` or `waypoints` also get a 路線導航 button
-- Without JavaScript all days and both plans are shown in order; printing always shows everything
-- Dark mode follows the system setting
+## Requirements
 
-### Template Placeholders
+- one self-contained HTML file;
+- CSS embedded, no required local assets;
+- Day tabs instead of a single long scrolling document;
+- sunny / rain-plan toggle when rain plans exist;
+- minimum comfortable mobile typography and tap targets;
+- stable traveler colors and highlight chips;
+- visible `changes`, constraints, and `to_verify` notices;
+- Google Maps place buttons and route buttons when enough transit data exists;
+- safe escaping of untrusted itinerary values;
+- unsafe URLs such as `javascript:` are not emitted;
+- without JavaScript, content remains accessible;
+- print mode shows all days;
+- system dark mode is supported.
 
-`assets/html-template.html` is filled in a single pass, so values containing `{{...}}` are never substituted again.
+The template is `assets/html-template.html`; presentation tokens are in `assets/style.css`.
 
-| Placeholder | Source | Encoding |
-|-------------|--------|----------|
-| `{{STYLES}}` | `assets/style.css` | raw |
-| `{{TRIP_NAME}}` | `trip.name` | HTML-escaped |
-| `{{TRIP_META}}` | `duration_days`, `date`, `starting_point`, `transportation` (empty parts skipped) | HTML-escaped |
-| `{{TRIP_NAME_JSON}}` / `{{DATE_JSON}}` | `trip.name` / `trip.date` | JSON string literal for `<script>` |
-| `{{TRAVELER_LEGEND}}` | `travelers[]` | generated markup |
-| `{{DAY_TABS}}` | `itinerary[]` + 須知 tab | generated markup |
-| `{{PLAN_TOGGLE}}` | shown only when any segment has `rain_plan` | generated markup |
-| `{{DAY_PANELS}}` | `itinerary[]`, day `changes` and `constraints` | generated markup |
-| `{{OVERVIEW}}` | trip-wide `changes`, `travelers`, `lodging`, all `constraints` | generated markup |
-| `{{TRAVEL_TIPS}}` | `summary.notes[]` | `<li>` items |
+See `examples/taipei-family-3days.html`.
 
-### Segment Rendering
+---
 
-| `type` | Card accent | Tag |
-|--------|-------------|-----|
-| `attraction` | by time: morning (<12:00), afternoon (12–17), evening (≥17) | 景點 |
-| `optional` | by time | 選配 |
-| `meal` | break color | 用餐 |
-| `break` | break color | 休息 |
-| `travel` | by time | 交通 |
+# 5. Replay and Golden Tests
 
-Card order: board-style time, tag, duration, rain badge → name → transit box (mode, line badges, duration, summary, 叫車 time) → notes → tips → ⏳ buffer → traveler highlights → ⚠️ 待確認 → 💡 切換原因 (rain plan only) → map and source buttons.
+A saved canonical itinerary can be replayed without live research:
 
-Only `http(s)` URLs are rendered as links.
-
-### Styling (Vibrant Color Scheme)
-
-```css
---primary: #FF6B6B      /* Coral Red: header, active tab */
---secondary: #4ECDC4    /* Teal: morning accent, map buttons */
---accent: #FFE66D       /* Yellow: afternoon accent, 晴天 toggle */
---board-bg: #0B0F17     /* Departure board background */
---board-text: #FBBF24   /* Amber digits */
+```bash
+scripts/format-json.sh --strict itinerary.json normalized-a.json
+scripts/format-json.sh --strict itinerary.json normalized-b.json
+cmp normalized-a.json normalized-b.json
 ```
 
-Traveler colors: `rose`, `blue`, `cyan`, `violet`, `amber`, `green`, `orange`, `slate`. Full stylesheet: `assets/style.css`.
+The repository validator performs this check automatically:
 
-See `examples/taipei-family-3days.html` for full output.
+```bash
+bash skills/travel-plan/validate.sh
+```
 
----
-
-## Format Selection Guide
-
-| Use Case | Recommended Format |
-|----------|-------------------|
-| Share via LINE/Email | Mobile HTML |
-| Check the plan on the road | Mobile HTML |
-| Print or PDF export | Markdown |
-| Import to apps (日曆, Notion) | JSON |
-| Documentation archive | Markdown |
-| Programmatic processing | JSON |
-
----
-
-## Related Documentation
-
-- See [Taiwan Data Sources](taiwan-data-sources.md) for data input and where to verify facts
-- See [Conversation Guide](conversation-guide.md) for presentation tips
+When intentionally refreshing real-world facts, update the canonical source data, append a `changes` entry, increment revision if used, and regenerate every requested artifact.
