@@ -162,68 +162,72 @@ def lint:
     | normalize
     | [.travelers[].id | select(present)] as $ids
     | (.itinerary | map({ key: (.day | tostring), value: .segments }) | from_entries) as $days
-    | def source_checks($where):
-        ((.sources // [])[]
-          | (if (.url | is_safe_url | not) then "\($where): sources 需要 http(s) 網址" else empty end),
-            (if .checked_at != null and (.checked_at | is_date | not) then "\($where): sources.checked_at 必須是 YYYY-MM-DD" else empty end));
-    | def check_segment($where):
-        (if (.time | is_hhmm | not) then "\($where): time 必須是 HH:MM" else empty end),
-        (if (.type | IN(segment_types[]) | not) then "\($where): type 必須是 \(segment_types | join(" / "))" else empty end),
-        (if (.name | present | not) then "\($where): name 不可空白" else empty end),
-        (if .duration_minutes != null and ((.duration_minutes | type) != "number" or .duration_minutes < 0) then "\($where): duration_minutes 必須是非負數" else empty end),
-        (if .buffer_minutes != null and ((.buffer_minutes | type) != "number" or .buffer_minutes < 0) then "\($where): buffer_minutes 必須是非負數" else empty end),
-        (if .transit.duration_minutes != null and ((.transit.duration_minutes | type) != "number" or .transit.duration_minutes < 0) then "\($where): transit.duration_minutes 必須是非負數" else empty end),
-        ((.highlights // {}) | keys[] | select(IN($ids[]) | not) | "\($where): highlights 的「\(.)」不在 travelers 裡"),
-        source_checks($where),
-        (if (.transit.call_at != null) and (.transit.call_at | is_hhmm | not) then "\($where): transit.call_at 必須是 HH:MM" else empty end);
-    [
-      (if (($raw.trip.name // "") | present | not) then "trip.name 不可空白" else empty end),
-      (if (.itinerary | length) == 0 then "itinerary 至少需要一天" else empty end),
-      (if .trip.duration_days != (.itinerary | length) then "trip.duration_days 與 itinerary 天數不一致" else empty end),
-      ([.travelers[].id | select(present)] | group_by(.)[] | select(length > 1) | "travelers.id 重複：「\(.[0])」"),
-      ([.itinerary[].day] | group_by(.)[] | select(length > 1) | "itinerary.day 重複：Day \(.[0])"),
-      (
-        .itinerary[] | .day as $day
-        | .segments | to_entries[]
-        | "Day \($day) 第 \(.key + 1) 項「\(.value.name // "")」" as $where
-        | .value as $segment
-        | $segment | check_segment($where),
-          (select(.rain_plan)
-            | ({ time: $segment.time, type: $segment.type } + .rain_plan)
-            | check_segment("\($where) 的雨備"),
-              (if (.reason | present | not) then "\($where) 的 rain_plan.reason 不可空白" else empty end))
-      ),
-      (
-        .itinerary[] | .day as $day
-        | [.segments[] | .time | minutes_of_day] as $times
-        | range(1; $times | length)
-        | select($times[.] != null and $times[. - 1] != null and $times[.] < $times[. - 1])
-        | "Day \($day) 第 \(. + 1) 項的時間早於前一項"
-      ),
-      (
-        .constraints[]
-        | . as $constraint
-        | ($days[.day | tostring] // null) as $segments
-        | if $segments == null then "constraints: Day \(.day) 不在 itinerary 裡"
-          elif (.time | is_hhmm | not) then "constraints: Day \(.day) 的 time 必須是 HH:MM"
-          elif (.kind | IN(constraint_types[]) | not) then "constraints: kind 必須是 \(constraint_types | join(" / "))"
-          elif .kind == "arrive_by" and ($segments | length) > 0
-               and (($segments | last | .time | minutes_of_day) // 0) > (.time | minutes_of_day) then
-              "Day \(.day) 最後一項 \($segments | last | .time) 晚於截止時間 \(.time)（\(.description // "arrive_by")）"
-          elif .kind == "depart_after" and ($segments | length) > 0
-               and (($segments | first | .time | minutes_of_day) // 1440) < (.time | minutes_of_day) then
-              "Day \(.day) 第一項 \($segments | first | .time) 早於可出發時間 \(.time)（\(.description // "depart_after")）"
-          else empty
-          end
-      ),
-      (
-        .itinerary[] | select(.weather)
-        | if .weather.source == null or .weather.checked_at == null then
-            "Day \(.day) 的 weather 需要 source 與 checked_at"
-          elif (.weather.checked_at | is_date | not) then
-            "Day \(.day) 的 weather.checked_at 必須是 YYYY-MM-DD"
-          else empty end
-      )
-    ];
+    | (
+        def source_checks($where):
+            (.sources // [])[]
+            | (if (.url | is_safe_url | not) then "\($where): sources 需要 http(s) 網址" else empty end),
+              (if .checked_at != null and (.checked_at | is_date | not) then "\($where): sources.checked_at 必須是 YYYY-MM-DD" else empty end);
+        def check_segment($where):
+            (if (.time | is_hhmm | not) then "\($where): time 必須是 HH:MM" else empty end),
+            (if (.type | IN(segment_types[]) | not) then "\($where): type 必須是 \(segment_types | join(" / "))" else empty end),
+            (if (.name | present | not) then "\($where): name 不可空白" else empty end),
+            (if .duration_minutes != null and ((.duration_minutes | type) != "number" or .duration_minutes < 0) then "\($where): duration_minutes 必須是非負數" else empty end),
+            (if .buffer_minutes != null and ((.buffer_minutes | type) != "number" or .buffer_minutes < 0) then "\($where): buffer_minutes 必須是非負數" else empty end),
+            (if .transit.duration_minutes != null and ((.transit.duration_minutes | type) != "number" or .transit.duration_minutes < 0) then "\($where): transit.duration_minutes 必須是非負數" else empty end),
+            ((.highlights // {}) | keys[] | select(IN($ids[]) | not) | "\($where): highlights 的「\(.)」不在 travelers 裡"),
+            source_checks($where),
+            (if (.transit.call_at != null) and (.transit.call_at | is_hhmm | not) then "\($where): transit.call_at 必須是 HH:MM" else empty end);
+        [
+          (if (($raw.trip.name // "") | present | not) then "trip.name 不可空白" else empty end),
+          (if (.itinerary | length) == 0 then "itinerary 至少需要一天" else empty end),
+          (if .trip.duration_days != (.itinerary | length) then "trip.duration_days 與 itinerary 天數不一致" else empty end),
+          ([.travelers[].id | select(present)] | group_by(.)[] | select(length > 1) | "travelers.id 重複：「\(.[0])」"),
+          ([.itinerary[].day] | group_by(.)[] | select(length > 1) | "itinerary.day 重複：Day \(.[0])"),
+          (
+            .itinerary[] | .day as $day
+            | .segments | to_entries[]
+            | "Day \($day) 第 \(.key + 1) 項「\(.value.name // "")」" as $where
+            | .value as $segment
+            | ($segment | check_segment($where)),
+              ($segment | select(.rain_plan)
+                | ({ time: $segment.time, type: $segment.type } + .rain_plan)
+                | check_segment("\($where) 的雨備")),
+              ($segment | select(.rain_plan)
+                | .rain_plan
+                | if (.reason | present | not) then "\($where) 的 rain_plan.reason 不可空白" else empty end)
+          ),
+          (
+            .itinerary[] | .day as $day
+            | [.segments[] | .time | minutes_of_day] as $times
+            | range(1; $times | length)
+            | select($times[.] != null and $times[. - 1] != null and $times[.] < $times[. - 1])
+            | "Day \($day) 第 \(. + 1) 項的時間早於前一項"
+          ),
+          (
+            .constraints[]
+            | . as $constraint
+            | ($days[.day | tostring] // null) as $segments
+            | if $segments == null then "constraints: Day \(.day) 不在 itinerary 裡"
+              elif (.time | is_hhmm | not) then "constraints: Day \(.day) 的 time 必須是 HH:MM"
+              elif (.kind | IN(constraint_types[]) | not) then "constraints: kind 必須是 \(constraint_types | join(" / "))"
+              elif .kind == "arrive_by" and ($segments | length) > 0
+                   and (($segments | last | .time | minutes_of_day) // 0) > (.time | minutes_of_day) then
+                  "Day \(.day) 最後一項 \($segments | last | .time) 晚於截止時間 \(.time)（\(.description // "arrive_by")）"
+              elif .kind == "depart_after" and ($segments | length) > 0
+                   and (($segments | first | .time | minutes_of_day) // 1440) < (.time | minutes_of_day) then
+                  "Day \(.day) 第一項 \($segments | first | .time) 早於可出發時間 \(.time)（\(.description // "depart_after")）"
+              else empty
+              end
+          ),
+          (
+            .itinerary[] | select(.weather)
+            | if .weather.source == null or .weather.checked_at == null then
+                "Day \(.day) 的 weather 需要 source 與 checked_at"
+              elif (.weather.checked_at | is_date | not) then
+                "Day \(.day) 的 weather.checked_at 必須是 YYYY-MM-DD"
+              else empty end
+          )
+        ]
+      );
 
 def to_verify_count: [.. | objects | select(has("to_verify")) | .to_verify | select(present)] | length;
