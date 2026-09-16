@@ -1,106 +1,172 @@
 # Travel Skills
 
-這是一個專門為 AI Agent 設計的旅遊技能庫 (Skill Library)。目前包含針對台灣旅遊優化的行程規劃技能，旨在透過 AI 協助使用者快速、專業地安排旅遊行程。
+這是一個專門為 AI Agent 設計的旅遊技能庫（Skill Library）。目前核心技能 `travel-plan` 針對台灣旅遊規劃，重點不是只提供提示詞，而是提供一套可以被 Agent、CLI 與 CI 共用的可驗證執行契約。
 
-## 📂 技能列表 (Skills List)
+## 🗺️ Travel Plan
 
-### 1. 🗺️ Travel Plan (`skills/travel-plan`)
-**專為台灣旅遊設計的智慧行程規劃技能。**
+`skills/travel-plan` 目前為 **v1.2.0**。
 
-此技能讓 Agent 能夠像專業導遊一樣，從景點順序、交通時間到休息站建議，提供全方位的規劃服務。
+它把旅遊規劃拆成固定流程：
 
-- **✨ 功能亮點**：
-  - **自然語言溝通**：支援用聊天的方式討論行程（例如：「不想太累、想晚點出門」）。
-  - **同行成員需求**：記錄每位成員的興趣與體力、健康需求，並在每個行程點標出各自的亮點。
-  - **固定時間點倒推**：有「幾點後才能出發」或「幾點前要回到家」時，從截止時間往回排，最後一天不壓線。
-  - **排隊與等待緩衝**：預留買票排隊、等電梯、叫車、停車、入住寄放行李的時間。
-  - **晴雨雙軌**：戶外行程附雨天備案與切換原因。
-  - **查證來源**：營業時間、票價、天氣等資訊附來源與查詢日期，查不到的標示「待確認」。
-  - **智慧路線優化**：根據地理位置建議順路排序，路線有多種選擇時列出時間、距離、舒適度的取捨。
-  - **多格式輸出**：
-    - 📝 **Markdown**：適合電腦閱讀、列印或存檔，含雨備欄位。
-    - 📱 **Mobile HTML**：單一檔案、離線可開；Day 分頁切換、晴天／雨備一鍵切換、電子看板風格時刻、成員色標、大字級、Google Maps 膠囊按鈕。
-    - ⚙️ **JSON**：結構化資料，便於程式串接或匯入其他工具。
+```text
+INGEST → RESEARCH → PLAN → VALIDATE → RENDER → COMPLETE
+```
 
-- **🎯 適用場景**：
-  - 週末家庭出遊規劃
-  - 多日環島路線安排
-  - 景點順序與交通時間估算
-  - 依天氣或臨時行程變動調整既有行程
+核心設計：
 
-## 🏗️ 專案結構
+- **互動模式**：可像一般旅遊顧問一樣自然討論需求。
+- **Batch 模式**：可由另一個 Agent、workflow 或 CI 直接給 JSON request，不依賴人工追問。
+- **Canonical Request Schema**：`schemas/request.schema.json`。
+- **Canonical Itinerary Schema**：`schemas/itinerary.schema.json`。
+- **單一資料來源**：Markdown、Mobile HTML、JSON 都由同一份 itinerary JSON 產生。
+- **Deterministic normalization**：預設不偷偷寫入現在時間；同一輸入與 formatter 版本可得到相同 normalized JSON。
+- **Strict validation**：final / batch 輸出可作為 CI publish gate。
+- **Snapshot replay**：即時查證資料固定後，可以不重新上網就重播同一份行程。
+- **Explicit assumptions / decisions**：batch default 與規劃選擇都可被追蹤，不靠隱藏假設。
+- **來源與待確認**：營業時間、票價、天氣等外部資訊區分 confirmed evidence 與 `to_verify`。
+- **家庭成員需求**：可針對每位成員記錄興趣、體力、行動需求與 segment highlights。
+- **時間約束倒推**：支援 `depart_after` / `arrive_by`。
+- **雨備與緩衝**：可記錄 queue、停車、叫車、入住與雨天替代方案。
+
+## 📂 專案結構
 
 ```text
 travel-skill/
+├── .github/
+│   └── workflows/
+│       └── validate-travel-skill.yml
 ├── skills/
-│   └── travel-plan/                  # [核心] 行程規劃技能
-│       ├── SKILL.md                  # 技能定義、工作流與規劃規則
-│       ├── assets/                   # HTML 模板與樣式（產生時內嵌為單一檔案）
-│       ├── examples/                 # 範例行程（皆為虛構）
+│   └── travel-plan/
+│       ├── SKILL.md
+│       ├── validate.sh
+│       ├── schemas/
+│       │   ├── request.schema.json
+│       │   └── itinerary.schema.json
+│       ├── assets/
+│       │   ├── html-template.html
+│       │   └── style.css
+│       ├── examples/
 │       │   ├── taipei-family-3days.json
 │       │   ├── taipei-family-3days.html
 │       │   ├── taipei-family-3days.md
 │       │   └── pingtung-kenting-weekend-trip.md
-│       ├── references/               # 參考文件
-│       │   ├── conversation-guide.md # 對話策略與情境範例
-│       │   ├── output-formats.md     # 輸出格式規範 (MD, HTML, JSON)
-│       │   └── taiwan-data-sources.md# 觀光、天氣、交通資料來源
-│       └── scripts/                  # 輸出腳本（需要 jq）
+│       ├── references/
+│       │   ├── execution-contract.md
+│       │   ├── conversation-guide.md
+│       │   ├── output-formats.md
+│       │   └── taiwan-data-sources.md
+│       └── scripts/
 │           ├── format-json.sh
 │           ├── format-html.sh
 │           ├── format-markdown.sh
 │           └── lib/
 │               ├── common.sh
 │               └── itinerary.jq
-└── README.md                         # 專案說明文件
+└── README.md
 ```
 
-## 安裝方式 (Installation)
+## 安裝
 
-### 使用 Skill Linker (推薦)
-
-您可以使用 [Skill Linker](https://github.com/raybird/skill-linker) 工具來自動偵測並安裝此專案中的技能到您的 Agent 環境中（支援 Mac, Linux, Windows）。
+### 使用 Skill Linker
 
 ```bash
-# 直接從 GitHub 安裝
 npx skill-linker --from https://github.com/raybird/travel-skill
+```
 
-# 或是如果您已經下載到本地
+或已下載到本機：
+
+```bash
 npx skill-linker ./travel-skill
 ```
 
-工具會自動偵測 `skills` 資料夾，並引導您選擇要安裝的技能（如 `travel-plan`）以及目標 Agent。
+Skill Linker 會偵測 `skills` 目錄並讓你選擇要安裝到哪個 Agent。
 
-## 🚀 快速開始 (Quick Start)
+## 🚀 互動使用
 
-載入此專案環境後，您即擁有 `travel-plan` 的能力。請嘗試對 Agent 說：
+例如：
 
-> 「我要規劃去台南和墾丁的三天兩夜行程，幫我安排順路的景點。」
+> 「一家五口從台中去台北玩三天，最後一天 17:30 前一定要回台中，幫我做有雨備的手機行程。」
 
-或是：
+Agent 會依 `SKILL.md` 與 execution contract 收集需求、查證資料、建立 canonical itinerary、驗證，再產生輸出。
 
-> 「一家五口從台中去台北玩三天，最後一天傍晚要趕回來，幫我做一個手機好讀、有雨備的行程表。」
+## ⚙️ Reproducible Pipeline
 
-Agent 將會自動引用 `skills/travel-plan/SKILL.md` 中的指引與知識，為您生成最合適的行程。
-
-## 📝 輸出範例
-
-以下範例皆為虛構行程：
-
-- [台北親子三日遊 JSON](./skills/travel-plan/examples/taipei-family-3days.json)
-- [台北親子三日遊 手機版 HTML](./skills/travel-plan/examples/taipei-family-3days.html)
-- [台北親子三日遊 Markdown](./skills/travel-plan/examples/taipei-family-3days.md)
-- [屏東墾丁週末二日遊 Markdown](./skills/travel-plan/examples/pingtung-kenting-weekend-trip.md)
-
-由行程 JSON 產生各格式（格式規範見 `skills/travel-plan/references/output-formats.md`，腳本需要安裝 [jq](https://jqlang.github.io/jq/)）：
+### Draft
 
 ```bash
-skills/travel-plan/scripts/format-json.sh itinerary.json normalized.json
-skills/travel-plan/scripts/format-html.sh normalized.json itinerary.html
-skills/travel-plan/scripts/format-markdown.sh normalized.json itinerary.md
+skills/travel-plan/scripts/format-json.sh \
+  itinerary.json normalized.json
 ```
 
-`format-json.sh` 會正規化資料並把檢查警告（時間格式、行程超過截止時間等）輸出到 stderr。
+有 semantic 問題時會印 warning，但仍可繼續做互動草稿。
+
+### Final / CI
+
+```bash
+skills/travel-plan/scripts/format-json.sh --strict \
+  itinerary.json normalized.json
+
+skills/travel-plan/scripts/format-html.sh \
+  normalized.json itinerary.html
+
+skills/travel-plan/scripts/format-markdown.sh \
+  normalized.json itinerary.md
+```
+
+`--strict` 有 semantic 問題時會 exit `2`，並在驗證失敗時避免覆寫 publishable output。
+
+### 固定 publication timestamp
+
+如果需要 timestamp，又希望結果可 replay：
+
+```bash
+skills/travel-plan/scripts/format-json.sh --strict \
+  --generated-at 2026-09-16T06:30:00Z \
+  itinerary.json normalized.json
+```
+
+預設不會使用目前系統時間。`--stamp-now` 僅適合明確不要求 byte-reproducible 的發布流程。
+
+## 🧪 驗證
+
+```bash
+bash skills/travel-plan/validate.sh
+```
+
+validator 會檢查：
+
+- Skill / reference / schema 結構
+- JSON schema 檔是否為合法 JSON
+- golden example 是否通過 strict semantic validation
+- 同一 canonical input 連跑兩次是否 byte-stable
+- caller-controlled timestamp
+- strict failure 是否阻止覆寫 output
+- Markdown / HTML renderer 是否仍與 golden files 一致
+- HTML escaping 與 unsafe URL 過濾
+
+GitHub Actions 也會執行相同 validator。
+
+## 即時資料與「可重複」的界線
+
+天氣、營業時間、票價、交通與臨時休館本來就會改變，因此不能假裝「今天重新查網路」一定會得到與上次相同的結果。
+
+本專案採用的界線是：
+
+1. `live` research 可以取得最新資料；
+2. 每個外部事實記錄來源與查證日期；
+3. 一旦 canonical itinerary / evidence 固定，後面的 normalize、validate、render 必須 deterministic；
+4. 要重播既有版本時使用 snapshot，不偷偷更新外部資料；
+5. 要更新真實世界資訊時，視為新 revision，重新 research 並記錄 `changes`。
+
+完整定義見 `skills/travel-plan/references/execution-contract.md`。
+
+## 輸出範例
+
+- `skills/travel-plan/examples/taipei-family-3days.json`
+- `skills/travel-plan/examples/taipei-family-3days.html`
+- `skills/travel-plan/examples/taipei-family-3days.md`
+- `skills/travel-plan/examples/pingtung-kenting-weekend-trip.md`
 
 ---
-*Travel Skills Project - Designed for Intelligent Travel Planning*
+
+*Travel Skills Project — executable, testable travel planning for AI Agents.*
