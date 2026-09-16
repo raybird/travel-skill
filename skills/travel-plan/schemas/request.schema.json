@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/raybird/travel-skill/blob/main/skills/travel-plan/schemas/request.schema.json",
+  "title": "Travel Plan Canonical Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["trip", "execution"],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "trip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_days"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "duration_days": { "type": "integer", "minimum": 1, "maximum": 60 },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "starting_point": { "type": "string" },
+        "transportation": { "type": "string" }
+      }
+    },
+    "attractions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "priority"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "priority": { "enum": ["must", "nice"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "travelers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+          "label": { "type": "string", "minLength": 1 },
+          "profile": { "type": "string" },
+          "interests": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "needs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["day", "time", "kind"],
+        "properties": {
+          "day": { "type": "integer", "minimum": 1 },
+          "time": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          "kind": { "enum": ["depart_after", "arrive_by", "other"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "lodging": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "address": { "type": "string" },
+          "check_in": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          "check_out": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          "parking": { "type": "string" },
+          "notes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pace": { "enum": ["relaxed", "balanced", "packed"] },
+        "interests": { "type": "array", "items": { "type": "string" } },
+        "avoid": { "type": "array", "items": { "type": "string" } },
+        "dining": { "type": "array", "items": { "type": "string" } },
+        "budget_notes": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Caller-supplied research snapshot for replay/snapshot mode.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "url", "checked_at"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "checked_at": { "type": "string", "format": "date" },
+          "claims": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "reference_date", "research_policy", "output_formats"],
+      "properties": {
+        "mode": { "enum": ["interactive", "batch"] },
+        "reference_date": { "type": "string", "format": "date" },
+        "research_policy": { "enum": ["live", "snapshot", "offline"] },
+        "strict_validation": { "type": "boolean", "default": true },
+        "output_formats": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["json", "markdown", "html"] }
+        }
+      }
+    }
+  }
+}

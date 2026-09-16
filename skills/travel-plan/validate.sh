@@ -1,6 +1,8 @@
 #!/bin/bash
 # Travel Plan Skill - Validation Script
-# Validates skill structure, then renders the examples to check the scripts end to end
+# Validates skill structure and exercises the deterministic render pipeline end to end.
+
+set -u
 
 SKILL_DIR="${1:-$(dirname "$0")}"
 ERRORS=0
@@ -14,13 +16,12 @@ fail() {
     ((ERRORS++))
 }
 
-# Check if skill directory exists
 if [[ ! -d "$SKILL_DIR" ]]; then
     echo "❌ Error: Skill directory not found: $SKILL_DIR"
     exit 1
 fi
 
-# Check for SKILL.md
+# Check SKILL.md
 echo "Checking SKILL.md..."
 if [[ -f "$SKILL_DIR/SKILL.md" ]]; then
     echo "  ✅ SKILL.md exists"
@@ -55,7 +56,7 @@ for script in format-markdown.sh format-json.sh format-html.sh; do
         if [[ -x "$SKILL_DIR/scripts/$script" ]]; then
             echo "  ✅ $script exists and is executable"
         else
-            echo "  ⚠️  $script is not executable"
+            echo "  ⚠️  $script is not executable (CI invokes it through bash-compatible checkout permissions)"
         fi
     else
         fail "$script not found"
@@ -71,13 +72,20 @@ done
 
 echo ""
 
-# Check references directory
-echo "Checking references/..."
-for ref in taiwan-data-sources.md output-formats.md conversation-guide.md; do
+# Check references and schemas
+echo "Checking contract files/..."
+for ref in taiwan-data-sources.md output-formats.md conversation-guide.md execution-contract.md; do
     if [[ -f "$SKILL_DIR/references/$ref" ]]; then
-        echo "  ✅ $ref exists"
+        echo "  ✅ references/$ref exists"
     else
-        echo "  ⚠️  $ref not found"
+        fail "references/$ref not found"
+    fi
+done
+for schema in request.schema.json itinerary.schema.json; do
+    if [[ -f "$SKILL_DIR/schemas/$schema" ]]; then
+        echo "  ✅ schemas/$schema exists"
+    else
+        fail "schemas/$schema not found"
     fi
 done
 
@@ -95,23 +103,63 @@ done
 
 echo ""
 
-# Render examples
-echo "Checking examples/..."
+# Render examples and exercise strict/deterministic behavior.
+echo "Checking examples and execution contract..."
 EXAMPLE="$SKILL_DIR/examples/taipei-family-3days"
 if ! command -v jq &> /dev/null; then
-    echo "  ⚠️  jq not found, skipping render checks"
+    echo "  ⚠️  jq not found, skipping executable checks"
 elif [[ ! -f "$EXAMPLE.json" ]]; then
     fail "examples/taipei-family-3days.json not found"
 else
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
 
-    if "$SKILL_DIR/scripts/format-json.sh" "$EXAMPLE.json" "$TMP_DIR/normalized.json" 2> "$TMP_DIR/lint.txt" \
-        && ! grep -q "Warning" "$TMP_DIR/lint.txt"; then
-        echo "  ✅ format-json.sh: example has no warnings"
+    for schema in "$SKILL_DIR"/schemas/*.json; do
+        if jq empty "$schema" >/dev/null 2>&1; then
+            echo "  ✅ $(basename "$schema") is valid JSON"
+        else
+            fail "$(basename "$schema") is malformed JSON"
+        fi
+    done
+
+    if "$SKILL_DIR/scripts/format-json.sh" --strict "$EXAMPLE.json" "$TMP_DIR/normalized-a.json" 2> "$TMP_DIR/lint.txt"; then
+        echo "  ✅ format-json.sh --strict: example passes semantic validation"
     else
-        fail "format-json.sh reported problems:"
+        fail "format-json.sh --strict reported problems:"
         sed 's/^/      /' "$TMP_DIR/lint.txt"
+    fi
+
+    if "$SKILL_DIR/scripts/format-json.sh" --strict "$EXAMPLE.json" "$TMP_DIR/normalized-b.json" 2> "$TMP_DIR/lint-b.txt" \
+        && cmp -s "$TMP_DIR/normalized-a.json" "$TMP_DIR/normalized-b.json"; then
+        echo "  ✅ canonical JSON is byte-stable across repeated runs"
+    else
+        fail "canonical JSON is not deterministic"
+    fi
+
+    if jq -e '.meta.generated_at == null' "$TMP_DIR/normalized-a.json" >/dev/null 2>&1; then
+        echo "  ✅ deterministic mode does not inject wall-clock generated_at"
+    else
+        fail "deterministic mode unexpectedly injected meta.generated_at"
+    fi
+
+    if "$SKILL_DIR/scripts/format-json.sh" --strict --generated-at "2026-09-16T06:30:00Z" \
+        "$EXAMPLE.json" "$TMP_DIR/stamped.json" 2> "$TMP_DIR/stamped-lint.txt" \
+        && jq -e '.meta.generated_at == "2026-09-16T06:30:00Z"' "$TMP_DIR/stamped.json" >/dev/null; then
+        echo "  ✅ caller-controlled generated_at is reproducible"
+    else
+        fail "--generated-at did not preserve the caller timestamp"
+    fi
+
+    cat > "$TMP_DIR/invalid.json" <<'JSON'
+{"trip":{"name":"invalid","duration_days":1},"itinerary":[{"day":1,"segments":[{"time":"25:00","type":"attraction","name":""}]}]}
+JSON
+    echo "sentinel" > "$TMP_DIR/blocked.json"
+    if "$SKILL_DIR/scripts/format-json.sh" --strict "$TMP_DIR/invalid.json" "$TMP_DIR/blocked.json" >/dev/null 2> "$TMP_DIR/invalid-lint.txt"; then
+        fail "strict mode accepted an invalid itinerary"
+    elif [[ "$(cat "$TMP_DIR/blocked.json")" == "sentinel" ]]; then
+        echo "  ✅ strict mode rejects invalid input before touching publishable output"
+    else
+        fail "strict mode modified output even though validation failed"
     fi
 
     if "$SKILL_DIR/scripts/format-html.sh" "$EXAMPLE.json" "$TMP_DIR/example.html"; then
@@ -138,7 +186,7 @@ else
         fi
     done
 
-    # Values must stay escaped: no raw markup or closing script tag from trip data
+    # Values must stay escaped: no raw markup or closing script tag from trip data.
     echo '{"trip":{"name":"</script><b>x</b>{{DATE_JSON}}"},"itinerary":[{"segments":[{"time":"09:00","type":"attraction","name":"<img src=x>","map_url":"javascript:alert(1)"}]}]}' \
         | "$SKILL_DIR/scripts/format-html.sh" > "$TMP_DIR/escape.html"
     if grep -q -e "<b>x</b>" -e "<img src=x>" -e "javascript:alert" -e '</script><b>' "$TMP_DIR/escape.html"; then
@@ -151,9 +199,8 @@ fi
 echo ""
 echo "================================"
 
-# Summary
 if [[ $ERRORS -eq 0 ]]; then
-    echo "✅ Validation passed! Skill structure and examples are valid."
+    echo "✅ Validation passed! Skill contract, deterministic pipeline, and examples are valid."
     exit 0
 else
     echo "❌ Validation completed with $ERRORS error(s)"
