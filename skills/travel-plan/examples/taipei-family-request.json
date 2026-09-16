@@ -1,0 +1,76 @@
+{
+  "request_id": "demo-taipei-family-2026-10",
+  "trip": {
+    "name": "台北親子三日遊（Batch Request 範例）",
+    "duration_days": 3,
+    "start_date": "2026-10-14",
+    "end_date": "2026-10-16",
+    "starting_point": "台中",
+    "transportation": "自駕＋捷運"
+  },
+  "attractions": [
+    { "name": "台北 101 觀景台", "priority": "must" },
+    { "name": "臺北市立動物園", "priority": "must" },
+    { "name": "國立臺灣科學教育館", "priority": "nice" }
+  ],
+  "travelers": [
+    {
+      "id": "dad",
+      "label": "爸爸",
+      "profile": "大人・駕駛",
+      "interests": ["建築", "美食"],
+      "needs": ["長途開車中途要休息"]
+    },
+    {
+      "id": "mom",
+      "label": "媽媽",
+      "profile": "大人",
+      "interests": ["咖啡廳", "拍照"],
+      "needs": ["怕悶熱", "走一段要休息"]
+    },
+    {
+      "id": "kid",
+      "label": "妹妹",
+      "profile": "小一",
+      "interests": ["動物", "太空"],
+      "needs": ["午後容易累"]
+    }
+  ],
+  "constraints": [
+    {
+      "day": 1,
+      "time": "09:00",
+      "kind": "depart_after",
+      "description": "上午 9 點後才能離開台中"
+    },
+    {
+      "day": 3,
+      "time": "17:30",
+      "kind": "arrive_by",
+      "description": "17:30 前回到台中"
+    }
+  ],
+  "lodging": [
+    {
+      "name": "臺北車站周邊旅店",
+      "address": "臺北車站周邊",
+      "check_in": "15:00",
+      "check_out": "11:00",
+      "parking": "需要停車",
+      "notes": ["希望入住前可先寄放行李"]
+    }
+  ],
+  "preferences": {
+    "pace": "balanced",
+    "interests": ["親子", "室內外混合"],
+    "avoid": ["連續太久戶外曝曬"],
+    "dining": ["適合兒童", "不排太久"]
+  },
+  "execution": {
+    "mode": "batch",
+    "reference_date": "2026-09-16",
+    "research_policy": "live",
+    "strict_validation": true,
+    "output_formats": ["json", "markdown", "html"]
+  }
+}
