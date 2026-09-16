@@ -1,0 +1,31 @@
+name: Validate Travel Skill
+
+on:
+  push:
+    paths:
+      - 'skills/travel-plan/**'
+      - '.github/workflows/validate-travel-skill.yml'
+      - 'README.md'
+  pull_request:
+    paths:
+      - 'skills/travel-plan/**'
+      - '.github/workflows/validate-travel-skill.yml'
+      - 'README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate travel-plan skill
+        run: bash skills/travel-plan/validate.sh
