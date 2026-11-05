@@ -2,3 +2,6 @@
 *.db
 .agent/
 .serena/
+
+# Rendered itineraries from local runs
+output/
