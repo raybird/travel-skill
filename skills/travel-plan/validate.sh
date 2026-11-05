@@ -62,7 +62,7 @@ for script in format-markdown.sh format-json.sh format-html.sh; do
         fail "$script not found"
     fi
 done
-for lib in common.sh itinerary.jq; do
+for lib in common.sh itinerary.jq route-map.jq; do
     if [[ -f "$SKILL_DIR/scripts/lib/$lib" ]]; then
         echo "  ✅ lib/$lib exists"
     else
@@ -170,6 +170,22 @@ JSON
         fi
     else
         fail "format-html.sh failed"
+    fi
+
+    # Route map: one node per segment, each pointing at a list card the detail panel can clone.
+    segment_count=$(jq '[.itinerary[].segments[]] | length' "$EXAMPLE.json")
+    node_ids=$(grep -o '<g class="rm-node[^>]*data-seg="[^"]*"' "$TMP_DIR/example.html" | sed 's/.*data-seg="//; s/"$//')
+    node_count=$(printf '%s\n' "$node_ids" | grep -c .)
+    missing_cards=0
+    while read -r seg; do
+        [[ -n "$seg" ]] || continue
+        grep -q "id=\"seg-$seg\"" "$TMP_DIR/example.html" || ((missing_cards++))
+    done <<< "$node_ids"
+    if [[ "$node_count" -eq "$segment_count" && "$missing_cards" -eq 0 ]] \
+        && [[ $(grep -c 'class="rm-lane"' "$TMP_DIR/example.html") -eq $(jq '.itinerary | length' "$EXAMPLE.json") ]]; then
+        echo "  ✅ route map has one lane per day and one node per segment ($node_count), each linked to its card"
+    else
+        fail "route map nodes ($node_count) / segments ($segment_count) / missing cards ($missing_cards) do not match"
     fi
 
     if "$SKILL_DIR/scripts/format-markdown.sh" "$EXAMPLE.json" "$TMP_DIR/example.md"; then

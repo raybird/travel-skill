@@ -4,7 +4,7 @@
 
 ## 🗺️ Travel Plan
 
-`skills/travel-plan` 目前為 **v1.2.0**。
+`skills/travel-plan` 目前為 **v1.3.0**。
 
 它把旅遊規劃拆成固定流程：
 
@@ -28,6 +28,7 @@ INGEST → RESEARCH → PLAN → VALIDATE → RENDER → COMPLETE
 - **家庭成員需求**：可針對每位成員記錄興趣、體力、行動需求與 segment highlights。
 - **時間約束倒推**：支援 `depart_after` / `arrive_by`。
 - **雨備與緩衝**：可記錄 queue、停車、叫車、入住與雨天替代方案。
+- **清單／路線圖切換**：Mobile HTML 可切到參考 [archify](https://github.com/tt-a1i/archify) 泳道圖的路線圖版面，一天一條泳道、連線標交通方式與時間，點任一站看詳情。
 
 ## 📂 專案結構
 
@@ -64,7 +65,8 @@ travel-skill/
 │           ├── format-markdown.sh
 │           └── lib/
 │               ├── common.sh
-│               └── itinerary.jq
+│               ├── itinerary.jq
+│               └── route-map.jq
 └── README.md
 ```
 
@@ -159,6 +161,7 @@ validator 會檢查：
 - caller-controlled timestamp
 - strict failure 是否阻止覆寫 output
 - Markdown / HTML renderer 是否仍與 golden files 一致
+- 路線圖每天一條泳道、每個 segment 一個節點，且都對得到清單卡片
 - HTML escaping 與 unsafe URL 過濾
 
 GitHub Actions 也會執行相同 validator。

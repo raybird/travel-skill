@@ -5,7 +5,7 @@ license: MIT
 compatibility: Designed for Agent Skills platform. Works with LLMs capable of tool calling and conversational interaction. Output scripts require bash and jq 1.6+. Web access is recommended for live research but snapshot/offline replay is supported.
 metadata:
   author: travel-skills
-  version: "1.2.0"
+  version: "1.3.0"
   tags: travel, taiwan, itinerary, planning, reproducible, agent-skill, 旅遊, 行程規劃
 ---
 
@@ -150,7 +150,7 @@ scripts/format-markdown.sh normalized.json itinerary.md
 | Format | Characteristics |
 |---|---|
 | Markdown | Day-by-day tables with rain plan column; useful for printing/archiving |
-| Mobile HTML | Self-contained offline file with Day tabs, sunny/rain toggle, large type, traveler chips, map buttons |
+| Mobile HTML | Self-contained offline file with Day tabs, sunny/rain toggle, list / route-map layout switch, large type, traveler chips, map buttons |
 | JSON | Canonical normalized model for storage, replay, integrations, and tests |
 
 ### Step 7: Revise
@@ -239,4 +239,4 @@ Repository checks are run with:
 bash skills/travel-plan/validate.sh
 ```
 
-The validator checks contract files, schemas, strict validation, deterministic canonical JSON, renderer golden files, and HTML escaping.
+The validator checks contract files, schemas, strict validation, deterministic canonical JSON, renderer golden files, route-map coverage, and HTML escaping.

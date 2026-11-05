@@ -59,6 +59,26 @@
     --member-slate: #475569;
     --member-slate-bg: #E2E8F0;
 
+    /* Route map (路線圖) */
+    --rm-canvas: #F3F6FA;
+    --rm-grid: rgba(44, 62, 80, 0.09);
+    --rm-lane: #C3CDD8;
+    --rm-lane-text: #5B6B7B;
+    --rm-node: #FFFFFF;
+    --rm-text: #1F2D3A;
+    --rm-sub: #5B6B7B;
+    --rm-time: #B45309;
+    --rm-edge-label: #4F5F6F;
+    --k-attraction: #0F766E;
+    --k-meal: #BE185D;
+    --k-break: #B45309;
+    --k-travel: #1D4ED8;
+    --k-optional: #7C3AED;
+    --e-drive: #15803D;
+    --e-transit: #7C3AED;
+    --e-walk: #64748B;
+    --e-plain: #94A3B8;
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, #C53A3A 0%, #D14343 100%);
     --gradient-secondary: linear-gradient(135deg, #17756E 0%, #1A7F77 100%);
@@ -212,16 +232,18 @@ a {
     color: #FFFFFF;
 }
 
-.plan-toggle {
+.plan-toggle,
+.layout-toggle {
     display: flex;
-    flex: 1 1 100%;
+    flex: 1 1 9rem;
     background: var(--surface-alt);
     border: 2px solid var(--border);
     border-radius: 14px;
     padding: 3px;
 }
 
-.plan-btn {
+.plan-btn,
+.layout-btn {
     flex: 1;
     min-height: 44px;
     border: none;
@@ -229,9 +251,15 @@ a {
     background: transparent;
     color: var(--text-medium);
     font: inherit;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.layout-btn[aria-pressed="true"] {
+    background: var(--text-dark);
+    color: var(--surface);
 }
 
 .plan-btn[aria-pressed="true"][data-plan="sun"] {
@@ -249,8 +277,9 @@ a {
         flex: 1 1 auto;
     }
 
-    .plan-toggle {
-        flex: 0 0 18rem;
+    .plan-toggle,
+    .layout-toggle {
+        flex: 0 0 13rem;
     }
 }
 
@@ -376,6 +405,7 @@ a {
     box-shadow: 0 2px 12px var(--shadow);
     padding: 0.9rem;
     margin-bottom: 0.85rem;
+    scroll-margin-top: 9.5rem;
 }
 
 .segment.afternoon {
@@ -767,6 +797,331 @@ a {
     color: inherit;
 }
 
+/* Layout switch: list (day panels) or route map */
+.map-only,
+.route-map {
+    display: none;
+}
+
+.js[data-layout="map"] .map-only {
+    display: flex;
+}
+
+.js[data-layout="map"] .route-map {
+    display: block;
+}
+
+.js[data-layout="map"] .day-panel:not(.info-panel),
+.js[data-layout="map"][data-panel="info"] .route-map,
+.js[data-layout="map"]:not([data-panel="info"]) .info-panel {
+    display: none;
+}
+
+.js[data-layout="map"] .container,
+.js[data-layout="map"] .nav-inner {
+    max-width: 1200px;
+}
+
+/* Route map (路線圖): one lane per day, inspired by archify's swimlane diagrams */
+.route-map {
+    margin-bottom: 1.5rem;
+}
+
+.rm-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem 0.75rem;
+    margin: 0.2rem 0 0.5rem;
+}
+
+.rm-hint {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.rm-zoom {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--surface-alt);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 2px;
+}
+
+.rm-zoom-btn {
+    min-width: 44px;
+    min-height: 40px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-dark);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.rm-zoom-btn:hover {
+    background: var(--surface);
+}
+
+.rm-zoom-level {
+    min-width: 3.2em;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-medium);
+    font-variant-numeric: tabular-nums;
+}
+
+.rm-note {
+    font-size: 0.86rem;
+    color: var(--text-medium);
+    margin-bottom: 0.6rem;
+}
+
+.rm-note strong {
+    color: var(--text-dark);
+}
+
+.rm-sep {
+    color: var(--text-light);
+}
+
+.rm-viewport {
+    overflow: auto;
+    scroll-axis-lock: none;
+    overscroll-behavior-x: contain;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background-color: var(--rm-canvas);
+    background-image: radial-gradient(var(--rm-grid) 1px, transparent 1px);
+    background-size: 18px 18px;
+    box-shadow: 0 2px 12px var(--shadow);
+    container-type: scroll-state;
+}
+
+.rm-viewport:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.rm-svg {
+    display: block;
+    max-width: none;
+    font-family: inherit;
+}
+
+.rm-lane {
+    transition: opacity 0.25s ease;
+}
+
+.rm-svg[data-focus] .rm-lane:not(.is-focus) {
+    opacity: 0.28;
+}
+
+.rm-lane-box {
+    fill: none;
+    stroke: var(--rm-lane);
+    stroke-width: 1.2;
+    stroke-dasharray: 6 5;
+}
+
+.rm-svg[data-focus] .rm-lane.is-focus .rm-lane-box {
+    stroke: var(--primary);
+    stroke-dasharray: none;
+}
+
+.rm-lane-label {
+    fill: var(--rm-lane-text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.rm-node {
+    --k: var(--k-attraction);
+    cursor: pointer;
+    outline: none;
+}
+
+.rm-node.k-meal { --k: var(--k-meal); }
+.rm-node.k-break { --k: var(--k-break); }
+.rm-node.k-travel { --k: var(--k-travel); }
+.rm-node.k-optional { --k: var(--k-optional); }
+
+.rm-box {
+    fill: color-mix(in srgb, var(--k) 9%, var(--rm-node));
+    stroke: var(--k);
+    stroke-width: 1.6;
+    transition: stroke-width 0.15s ease;
+}
+
+.rm-node.k-optional .rm-box {
+    stroke-dasharray: 5 4;
+}
+
+.rm-node:hover .rm-box,
+.rm-node:focus-visible .rm-box {
+    stroke-width: 3;
+}
+
+.rm-node:focus-visible .rm-box {
+    stroke: var(--rm-text);
+}
+
+.rm-node[aria-pressed="true"] .rm-box {
+    stroke-width: 3.2;
+    fill: color-mix(in srgb, var(--k) 22%, var(--rm-node));
+}
+
+.rm-time {
+    fill: var(--rm-time);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rm-name {
+    fill: var(--rm-text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.rm-sub {
+    fill: var(--rm-sub);
+    font-size: 11.5px;
+}
+
+.rm-flag {
+    fill: #3B5B8C;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.rm-flag-rain {
+    fill: #2563EB;
+}
+
+.rm-dot {
+    fill: var(--member);
+}
+
+.js:not([data-plan="rain"]) .rplan-rain,
+.js[data-plan="rain"] .rplan-sun {
+    display: none;
+}
+
+.rm-edge,
+.rm-flow {
+    stroke: var(--e-plain);
+    stroke-width: 1.6;
+    fill: none;
+}
+
+.rm-drive { --e: var(--e-drive); }
+.rm-transit { --e: var(--e-transit); }
+.rm-walk { --e: var(--e-walk); }
+.rm-plain { --e: var(--e-plain); }
+
+.rm-edge.rm-drive,
+.rm-edge.rm-transit,
+.rm-edge.rm-walk {
+    stroke: var(--e);
+}
+
+.rm-edge.rm-walk {
+    stroke-dasharray: 5 4;
+}
+
+.rm-head {
+    fill: var(--e);
+}
+
+.rm-flow {
+    stroke: var(--e);
+    stroke-width: 2.4;
+    stroke-dasharray: 2 14;
+    stroke-linecap: round;
+    opacity: 0.85;
+    animation: rm-flow 1.4s linear infinite;
+}
+
+.rm-flow.rm-plain,
+.rm-svg[data-focus] .rm-lane:not(.is-focus) .rm-flow {
+    display: none;
+}
+
+@keyframes rm-flow {
+    to {
+        stroke-dashoffset: -16;
+    }
+}
+
+.rm-edge-label {
+    fill: var(--rm-edge-label);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.rm-legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin: 0.6rem 0.2rem 0.9rem;
+    font-size: 0.8rem;
+    color: var(--text-medium);
+}
+
+.rm-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.rm-swatch {
+    --k: var(--k-attraction);
+    width: 18px;
+    height: 12px;
+    border-radius: 4px;
+    border: 2px solid var(--k);
+    background: color-mix(in srgb, var(--k) 12%, var(--rm-node));
+}
+
+.rm-swatch.k-meal { --k: var(--k-meal); }
+.rm-swatch.k-break { --k: var(--k-break); }
+.rm-swatch.k-travel { --k: var(--k-travel); }
+.rm-swatch.k-optional { --k: var(--k-optional); border-style: dashed; }
+
+.rm-line {
+    width: 24px;
+    border-top: 2px solid var(--e);
+}
+
+.rm-line.rm-walk {
+    border-top-style: dashed;
+}
+
+.rm-detail-empty {
+    padding: 1rem;
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.rm-detail .segment {
+    margin-bottom: 0.6rem;
+}
+
+.rm-open-list {
+    width: 100%;
+}
+
 /* Print Styles: every day and both plans */
 @media print {
     html {
@@ -785,6 +1140,7 @@ a {
     }
 
     .trip-nav,
+    .route-map,
     .actions-section,
     .footer,
     .links {
@@ -842,6 +1198,37 @@ a {
         --member-orange-bg: rgba(253, 186, 116, 0.16);
         --member-slate: #E2E8F0;
         --member-slate-bg: rgba(226, 232, 240, 0.14);
+        --rm-canvas: #0B1220;
+        --rm-grid: rgba(148, 163, 184, 0.1);
+        --rm-lane: #2F3D57;
+        --rm-lane-text: #8FA0B4;
+        --rm-node: #111A2E;
+        --rm-text: #E8EEEF;
+        --rm-sub: #9AA8B8;
+        --rm-time: #FBBF24;
+        --rm-edge-label: #A9B6C4;
+        --k-attraction: #2DD4BF;
+        --k-meal: #F472B6;
+        --k-break: #FBBF24;
+        --k-travel: #60A5FA;
+        --k-optional: #A78BFA;
+        --e-drive: #4ADE80;
+        --e-transit: #A78BFA;
+        --e-walk: #94A3B8;
+        --e-plain: #64748B;
+    }
+
+    .layout-btn[aria-pressed="true"] {
+        background: #E8EEEF;
+        color: #111827;
+    }
+
+    .rm-flag {
+        fill: #93C5FD;
+    }
+
+    .rm-flag-rain {
+        fill: #60A5FA;
     }
 
     .btn-secondary {
@@ -887,35 +1274,55 @@ a {
     <nav class="trip-nav" aria-label="行程導覽">
         <div class="nav-inner">
             <div class="day-tabs" role="tablist">
-                <button type="button" class="day-tab" role="tab" id="tab-day-1" data-target="day-1" aria-controls="day-1"><span>Day 1</span><small>10/14 三</small></button>
+                <button type="button" class="day-tab map-only" role="tab" id="tab-overview" data-target="overview" aria-controls="route-map"><span>總覽</span><small>全部天數</small></button>
+<button type="button" class="day-tab" role="tab" id="tab-day-1" data-target="day-1" aria-controls="day-1"><span>Day 1</span><small>10/14 三</small></button>
 <button type="button" class="day-tab" role="tab" id="tab-day-2" data-target="day-2" aria-controls="day-2"><span>Day 2</span><small>10/15 四</small></button>
 <button type="button" class="day-tab" role="tab" id="tab-day-3" data-target="day-3" aria-controls="day-3"><span>Day 3</span><small>10/16 五</small></button>
 <button type="button" class="day-tab" role="tab" id="tab-info" data-target="info" aria-controls="info"><span>須知</span><small>住宿・提醒</small></button>
             </div>
             <div class="plan-toggle" role="group" aria-label="晴天或雨備方案"><button type="button" class="plan-btn" data-plan="sun" aria-pressed="true">☀️ 晴天</button><button type="button" class="plan-btn" data-plan="rain" aria-pressed="false">⛈️ 雨備</button></div>
+            <div class="layout-toggle" role="group" aria-label="版面">
+                <button type="button" class="layout-btn" data-layout="list" aria-pressed="true">📋 清單</button>
+                <button type="button" class="layout-btn" data-layout="map" aria-pressed="false">🗺️ 路線圖</button>
+            </div>
         </div>
     </nav>
 
     <main class="container">
+        <section class="route-map" id="route-map" aria-label="路線圖">
+<div class="rm-toolbar"><p class="rm-hint">點任一站看詳情・左右滑動看整天</p><div class="rm-zoom" role="group" aria-label="縮放"><button type="button" class="rm-zoom-btn" data-zoom="out" aria-label="縮小">−</button><output class="rm-zoom-level" aria-live="polite">100%</output><button type="button" class="rm-zoom-btn" data-zoom="in" aria-label="放大">＋</button><button type="button" class="rm-zoom-btn rm-zoom-fit" data-zoom="fit">整張</button></div></div>
+<p class="rm-note" data-day="overview">3 天行程總覽，點上方 Day 分頁聚焦單日</p>
+<p class="rm-note" data-day="1" hidden><strong>Day 1 · 北上與台北 101</strong><span class="rm-sep"> ｜ </span>🌦️ 多雲，午後短暫陣雨 · 降雨 30%<span class="rm-sep"> ｜ </span>⏰ 09:00 後出發｜爸爸上午有線上會議，結束後才能出發<span class="rm-sep"> ｜ </span>🚗 自駕只用在台中—台北往返，市區移動全部改搭捷運或叫車。</p>
+<p class="rm-note" data-day="2" hidden><strong>Day 2 · 動物園上午場與室內下午</strong><span class="rm-sep"> ｜ </span>🌦️ 午後雷陣雨 · 降雨 60%</p>
+<p class="rm-note" data-day="3" hidden><strong>Day 3 · 恐龍化石與提早南下</strong><span class="rm-sep"> ｜ </span>🌦️ 多雲時晴 · 降雨 20%<span class="rm-sep"> ｜ </span>⏰ 17:30 前抵達｜妹妹 18:00 有才藝課，要先回到台中家<span class="rm-sep"> ｜ </span>🚗 上午只排一個室內點，11:15 前一定要出發。</p>
+<div class="rm-viewport" tabindex="0" role="region" aria-label="路線圖，可左右捲動">
+<svg class="rm-svg" viewBox="0 0 1891 410" width="1891" height="410" data-width="1891" role="group" aria-label="每日路線圖"><defs><marker id="rm-arrow-drive" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="rm-head rm-drive" d="M0,0 L8,4 L0,8 z"/></marker><marker id="rm-arrow-transit" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="rm-head rm-transit" d="M0,0 L8,4 L0,8 z"/></marker><marker id="rm-arrow-walk" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="rm-head rm-walk" d="M0,0 L8,4 L0,8 z"/></marker><marker id="rm-arrow-plain" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="rm-head rm-plain" d="M0,0 L8,4 L0,8 z"/></marker></defs><g class="rm-lane" id="lane-1" data-day="1"><rect class="rm-lane-box" x="12" y="14" width="1867" height="118" rx="14"/><text x="26" y="36" class="rm-lane-label">01 / Day 1 · 北上與台北 101 · 10/14（三）｜⏰ 09:00 後出發</text><line class="rm-edge rm-plain" x1="218" y1="85" x2="259" y2="85" marker-end="url(#rm-arrow-plain)"/><line class="rm-flow rm-plain" x1="218" y1="85" x2="259" y2="85"/><line class="rm-edge rm-drive" x1="395" y1="85" x2="487" y2="85" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="395" y1="85" x2="487" y2="85"/><text class="rm-edge-label" x="441" y="65" text-anchor="middle">🚗 自駕</text><text class="rm-edge-label" x="441" y="78" text-anchor="middle">1 小時 10 分</text><line class="rm-edge rm-transit" x1="642" y1="85" x2="704" y2="85" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="642" y1="85" x2="704" y2="85"/><text class="rm-edge-label" x="673" y="65" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="673" y="78" text-anchor="middle">25 分</text><line class="rm-edge rm-plain" x1="929" y1="85" x2="970" y2="85" marker-end="url(#rm-arrow-plain)"/><line class="rm-flow rm-plain" x1="929" y1="85" x2="970" y2="85"/><g class="rplan-sun"><line class="rm-edge rm-drive" x1="1139" y1="85" x2="1201" y2="85" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="1139" y1="85" x2="1201" y2="85"/><text class="rm-edge-label" x="1170" y="65" text-anchor="middle">🚕 叫車</text><text class="rm-edge-label" x="1170" y="78" text-anchor="middle">30 分</text></g><g class="rplan-rain"><line class="rm-edge rm-drive" x1="1139" y1="85" x2="1201" y2="85" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="1139" y1="85" x2="1201" y2="85"/><text class="rm-edge-label" x="1170" y="65" text-anchor="middle">🚕 叫車</text><text class="rm-edge-label" x="1170" y="78" text-anchor="middle">30 分</text></g><g class="rplan-sun"><line class="rm-edge rm-plain" x1="1422" y1="85" x2="1484" y2="85" marker-end="url(#rm-arrow-plain)"/><line class="rm-flow rm-plain" x1="1422" y1="85" x2="1484" y2="85"/></g><g class="rplan-rain"><line class="rm-edge rm-transit" x1="1422" y1="85" x2="1484" y2="85" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="1422" y1="85" x2="1484" y2="85"/><text class="rm-edge-label" x="1453" y="65" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="1453" y="78" text-anchor="middle">20 分</text></g><line class="rm-edge rm-transit" x1="1667" y1="85" x2="1729" y2="85" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="1667" y1="85" x2="1729" y2="85"/><text class="rm-edge-label" x="1698" y="65" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="1698" y="78" text-anchor="middle">20 分</text><g class="rm-node k-travel" data-seg="d1-1" tabindex="0" role="button" aria-pressed="false" aria-label="09:00，台中出發，國道 1 號北上，交通 · 約 1 小時 15 分"><title>09:00，台中出發，國道 1 號北上，交通 · 約 1 小時 15 分</title><rect class="rm-box" x="26" y="50" width="192" height="70" rx="10"/><text x="39" y="70" class="rm-time">09:00</text><text x="39" y="92" class="rm-name">台中出發，國道 1 號北上</text><text x="39" y="110" class="rm-sub">交通 · 約 1 小時 15 分</text></g><g class="rm-node k-break" data-seg="d1-2" tabindex="0" role="button" aria-pressed="false" aria-label="10:15，湖口服務區，休息 · 約 20 分鐘"><title>10:15，湖口服務區，休息 · 約 20 分鐘</title><rect class="rm-box" x="262" y="50" width="133" height="70" rx="10"/><text x="275" y="70" class="rm-time">10:15</text><text x="275" y="92" class="rm-name">湖口服務區</text><text x="275" y="110" class="rm-sub">休息 · 約 20 分鐘</text><circle class="rm-dot member-amber" cx="325" cy="66" r="4"/><circle class="rm-dot member-cyan" cx="336" cy="66" r="4"/></g><g class="rm-node k-travel" data-seg="d1-3" tabindex="0" role="button" aria-pressed="false" aria-label="11:45，旅店停車、寄放行李，交通 · 約 20 分鐘"><title>11:45，旅店停車、寄放行李，交通 · 約 20 分鐘</title><rect class="rm-box" x="490" y="50" width="152" height="70" rx="10"/><text x="503" y="70" class="rm-time">11:45</text><text x="503" y="92" class="rm-name">旅店停車、寄放行李</text><text x="503" y="110" class="rm-sub">交通 · 約 20 分鐘</text></g><g class="rm-node k-meal" data-seg="d1-4" tabindex="0" role="button" aria-pressed="false" aria-label="12:30，台北 101 購物中心美食街午餐，用餐 · 約 50 分鐘"><title>12:30，台北 101 購物中心美食街午餐，用餐 · 約 50 分鐘</title><rect class="rm-box" x="707" y="50" width="222" height="70" rx="10"/><text x="720" y="70" class="rm-time">12:30</text><text x="720" y="92" class="rm-name">台北 101 購物中心美食街午餐</text><text x="720" y="110" class="rm-sub">用餐 · 約 50 分鐘</text><circle class="rm-dot member-violet" cx="770" cy="66" r="4"/></g><g class="rm-node k-attraction" data-seg="d1-5" tabindex="0" role="button" aria-pressed="false" aria-label="13:30，台北 101 觀景台，景點 · 約 1 小時 30 分"><title>13:30，台北 101 觀景台，景點 · 約 1 小時 30 分</title><rect class="rm-box" x="973" y="50" width="166" height="70" rx="10"/><text x="986" y="70" class="rm-time">13:30</text><text x="986" y="92" class="rm-name">台北 101 觀景台</text><text x="986" y="110" class="rm-sub">景點 · 約 1 小時 30 分</text><circle class="rm-dot member-rose" cx="1036" cy="66" r="4"/><circle class="rm-dot member-blue" cx="1047" cy="66" r="4"/><circle class="rm-dot member-cyan" cx="1058" cy="66" r="4"/></g><g class="rm-node k-attraction has-rain" data-seg="d1-6" tabindex="0" role="button" aria-pressed="false" aria-label="15:30，臺北市兒童新樂園，景點 · 約 1 小時 30 分；雨備：15:30，國立臺灣科學教育館＋臺北市立天文科學教育館，景點 · 約 1 小時 30 分"><title>15:30，臺北市兒童新樂園，景點 · 約 1 小時 30 分；雨備：15:30，國立臺灣科學教育館＋臺北市立天文科學教育館，景點 · 約 1 小時 30 分</title><g class="rplan-sun"><rect class="rm-box" x="1204" y="50" width="218" height="70" rx="10"/><text x="1217" y="70" class="rm-time">15:30</text><text x="1409" y="70" class="rm-flag" text-anchor="end">有雨備</text><text x="1217" y="92" class="rm-name">臺北市兒童新樂園</text><text x="1217" y="110" class="rm-sub">景點 · 約 1 小時 30 分</text><circle class="rm-dot member-violet" cx="1267" cy="66" r="4"/><circle class="rm-dot member-blue" cx="1278" cy="66" r="4"/><circle class="rm-dot member-cyan" cx="1289" cy="66" r="4"/></g><g class="rplan-rain"><rect class="rm-box" x="1204" y="50" width="218" height="70" rx="10"/><text x="1217" y="70" class="rm-time">15:30</text><text x="1409" y="70" class="rm-flag rm-flag-rain" text-anchor="end">⛈️ 雨備</text><text x="1217" y="92" class="rm-name">國立臺灣科學教育館＋臺北市…</text><text x="1217" y="110" class="rm-sub">景點 · 約 1 小時 30 分</text><circle class="rm-dot member-violet" cx="1267" cy="66" r="4"/><circle class="rm-dot member-blue" cx="1278" cy="66" r="4"/><circle class="rm-dot member-cyan" cx="1289" cy="66" r="4"/></g></g><g class="rm-node k-meal has-rain" data-seg="d1-7" tabindex="0" role="button" aria-pressed="false" aria-label="17:30，士林夜市晚餐，用餐 · 約 1 小時 15 分；雨備：17:30，臺北車站周邊室內美食街，用餐 · 約 1 小時"><title>17:30，士林夜市晚餐，用餐 · 約 1 小時 15 分；雨備：17:30，臺北車站周邊室內美食街，用餐 · 約 1 小時</title><g class="rplan-sun"><rect class="rm-box" x="1487" y="50" width="180" height="70" rx="10"/><text x="1500" y="70" class="rm-time">17:30</text><text x="1654" y="70" class="rm-flag" text-anchor="end">有雨備</text><text x="1500" y="92" class="rm-name">士林夜市晚餐</text><text x="1500" y="110" class="rm-sub">用餐 · 約 1 小時 15 分</text><circle class="rm-dot member-rose" cx="1550" cy="66" r="4"/><circle class="rm-dot member-cyan" cx="1561" cy="66" r="4"/></g><g class="rplan-rain"><rect class="rm-box" x="1487" y="50" width="180" height="70" rx="10"/><text x="1500" y="70" class="rm-time">17:30</text><text x="1654" y="70" class="rm-flag rm-flag-rain" text-anchor="end">⛈️ 雨備</text><text x="1500" y="92" class="rm-name">臺北車站周邊室內美食街</text><text x="1500" y="110" class="rm-sub">用餐 · 約 1 小時</text></g></g><g class="rm-node k-travel" data-seg="d1-8" tabindex="0" role="button" aria-pressed="false" aria-label="19:15，回旅店辦理入住，交通 · 約 20 分鐘"><title>19:15，回旅店辦理入住，交通 · 約 20 分鐘</title><rect class="rm-box" x="1732" y="50" width="133" height="70" rx="10"/><text x="1745" y="70" class="rm-time">19:15</text><text x="1745" y="92" class="rm-name">回旅店辦理入住</text><text x="1745" y="110" class="rm-sub">交通 · 約 20 分鐘</text></g></g>
+<g class="rm-lane" id="lane-2" data-day="2"><rect class="rm-lane-box" x="12" y="146" width="1867" height="118" rx="14"/><text x="26" y="168" class="rm-lane-label">02 / Day 2 · 動物園上午場與室內下午 · 10/15（四）</text><g class="rplan-sun"><line class="rm-edge rm-drive" x1="229" y1="217" x2="291" y2="217" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="229" y1="217" x2="291" y2="217"/><text class="rm-edge-label" x="260" y="197" text-anchor="middle">🚕 叫車</text><text class="rm-edge-label" x="260" y="210" text-anchor="middle">30 分</text></g><g class="rplan-rain"><line class="rm-edge rm-walk" x1="229" y1="217" x2="291" y2="217" marker-end="url(#rm-arrow-walk)"/><line class="rm-flow rm-walk" x1="229" y1="217" x2="291" y2="217"/><text class="rm-edge-label" x="260" y="197" text-anchor="middle">🚶 步行</text><text class="rm-edge-label" x="260" y="210" text-anchor="middle">15 分</text></g><line class="rm-edge rm-plain" x1="432" y1="217" x2="473" y2="217" marker-end="url(#rm-arrow-plain)"/><line class="rm-flow rm-plain" x1="432" y1="217" x2="473" y2="217"/><g class="rplan-sun"><line class="rm-edge rm-transit" x1="603" y1="217" x2="665" y2="217" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="603" y1="217" x2="665" y2="217"/><text class="rm-edge-label" x="634" y="197" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="634" y="210" text-anchor="middle">15 分</text></g><g class="rplan-rain"><line class="rm-edge rm-transit" x1="603" y1="217" x2="665" y2="217" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="603" y1="217" x2="665" y2="217"/><text class="rm-edge-label" x="634" y="197" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="634" y="210" text-anchor="middle">15 分</text></g><line class="rm-edge rm-plain" x1="818" y1="217" x2="859" y2="217" marker-end="url(#rm-arrow-plain)"/><line class="rm-flow rm-plain" x1="818" y1="217" x2="859" y2="217"/><line class="rm-edge rm-transit" x1="1028" y1="217" x2="1090" y2="217" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="1028" y1="217" x2="1090" y2="217"/><text class="rm-edge-label" x="1059" y="197" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="1059" y="210" text-anchor="middle">15 分</text><g class="rm-node k-attraction has-rain" data-seg="d2-1" tabindex="0" role="button" aria-pressed="false" aria-label="09:00，臺北市立動物園，景點 · 約 3 小時；雨備：09:30，國立臺灣博物館 鐵道部園區，景點 · 約 2 小時 30 分"><title>09:00，臺北市立動物園，景點 · 約 3 小時；雨備：09:30，國立臺灣博物館 鐵道部園區，景點 · 約 2 小時 30 分</title><g class="rplan-sun"><rect class="rm-box" x="26" y="182" width="203" height="70" rx="10"/><text x="39" y="202" class="rm-time">09:00</text><text x="216" y="202" class="rm-flag" text-anchor="end">有雨備</text><text x="39" y="224" class="rm-name">臺北市立動物園</text><text x="39" y="242" class="rm-sub">景點 · 約 3 小時</text><circle class="rm-dot member-violet" cx="89" cy="198" r="4"/><circle class="rm-dot member-rose" cx="100" cy="198" r="4"/><circle class="rm-dot member-blue" cx="111" cy="198" r="4"/><circle class="rm-dot member-cyan" cx="122" cy="198" r="4"/></g><g class="rplan-rain"><rect class="rm-box" x="26" y="182" width="203" height="70" rx="10"/><text x="39" y="202" class="rm-time">09:30</text><text x="216" y="202" class="rm-flag rm-flag-rain" text-anchor="end">⛈️ 雨備</text><text x="39" y="224" class="rm-name">國立臺灣博物館 鐵道部園區</text><text x="39" y="242" class="rm-sub">景點 · 約 2 小時 30 分</text><circle class="rm-dot member-violet" cx="89" cy="198" r="4"/><circle class="rm-dot member-rose" cx="100" cy="198" r="4"/><circle class="rm-dot member-blue" cx="111" cy="198" r="4"/><circle class="rm-dot member-cyan" cx="122" cy="198" r="4"/></g></g><g class="rm-node k-meal has-rain" data-seg="d2-2" tabindex="0" role="button" aria-pressed="false" aria-label="12:30，臺北車站周邊午餐，用餐 · 約 1 小時；雨備：12:30，臺北車站周邊午餐，用餐 · 約 1 小時"><title>12:30，臺北車站周邊午餐，用餐 · 約 1 小時；雨備：12:30，臺北車站周邊午餐，用餐 · 約 1 小時</title><g class="rplan-sun"><rect class="rm-box" x="294" y="182" width="138" height="70" rx="10"/><text x="307" y="202" class="rm-time">12:30</text><text x="419" y="202" class="rm-flag" text-anchor="end">有雨備</text><text x="307" y="224" class="rm-name">臺北車站周邊午餐</text><text x="307" y="242" class="rm-sub">用餐 · 約 1 小時</text></g><g class="rplan-rain"><rect class="rm-box" x="294" y="182" width="138" height="70" rx="10"/><text x="307" y="202" class="rm-time">12:30</text><text x="419" y="202" class="rm-flag rm-flag-rain" text-anchor="end">⛈️ 雨備</text><text x="307" y="224" class="rm-name">臺北車站周邊午餐</text><text x="307" y="242" class="rm-sub">用餐 · 約 1 小時</text></g></g><g class="rm-node k-attraction" data-seg="d2-3" tabindex="0" role="button" aria-pressed="false" aria-label="13:30，台北地下街，景點 · 約 2 小時"><title>13:30，台北地下街，景點 · 約 2 小時</title><rect class="rm-box" x="476" y="182" width="127" height="70" rx="10"/><text x="489" y="202" class="rm-time">13:30</text><text x="489" y="224" class="rm-name">台北地下街</text><text x="489" y="242" class="rm-sub">景點 · 約 2 小時</text><circle class="rm-dot member-violet" cx="539" cy="198" r="4"/><circle class="rm-dot member-rose" cx="550" cy="198" r="4"/><circle class="rm-dot member-blue" cx="561" cy="198" r="4"/><circle class="rm-dot member-cyan" cx="572" cy="198" r="4"/></g><g class="rm-node k-attraction has-rain" data-seg="d2-4" tabindex="0" role="button" aria-pressed="false" aria-label="15:45，西門町，景點 · 約 2 小時；雨備：15:45，萬年商業大樓，景點 · 約 2 小時"><title>15:45，西門町，景點 · 約 2 小時；雨備：15:45，萬年商業大樓，景點 · 約 2 小時</title><g class="rplan-sun"><rect class="rm-box" x="668" y="182" width="150" height="70" rx="10"/><text x="681" y="202" class="rm-time">15:45</text><text x="805" y="202" class="rm-flag" text-anchor="end">有雨備</text><text x="681" y="224" class="rm-name">西門町</text><text x="681" y="242" class="rm-sub">景點 · 約 2 小時</text><circle class="rm-dot member-rose" cx="731" cy="198" r="4"/><circle class="rm-dot member-cyan" cx="742" cy="198" r="4"/></g><g class="rplan-rain"><rect class="rm-box" x="668" y="182" width="150" height="70" rx="10"/><text x="681" y="202" class="rm-time">15:45</text><text x="805" y="202" class="rm-flag rm-flag-rain" text-anchor="end">⛈️ 雨備</text><text x="681" y="224" class="rm-name">萬年商業大樓</text><text x="681" y="242" class="rm-sub">景點 · 約 2 小時</text><circle class="rm-dot member-rose" cx="731" cy="198" r="4"/><circle class="rm-dot member-blue" cx="742" cy="198" r="4"/></g></g><g class="rm-node k-meal" data-seg="d2-5" tabindex="0" role="button" aria-pressed="false" aria-label="18:00，西門町晚餐，用餐 · 約 1 小時 15 分"><title>18:00，西門町晚餐，用餐 · 約 1 小時 15 分</title><rect class="rm-box" x="862" y="182" width="166" height="70" rx="10"/><text x="875" y="202" class="rm-time">18:00</text><text x="875" y="224" class="rm-name">西門町晚餐</text><text x="875" y="242" class="rm-sub">用餐 · 約 1 小時 15 分</text><circle class="rm-dot member-amber" cx="925" cy="198" r="4"/></g><g class="rm-node k-travel" data-seg="d2-6" tabindex="0" role="button" aria-pressed="false" aria-label="19:30，搭捷運回旅店，交通 · 約 15 分鐘"><title>19:30，搭捷運回旅店，交通 · 約 15 分鐘</title><rect class="rm-box" x="1093" y="182" width="133" height="70" rx="10"/><text x="1106" y="202" class="rm-time">19:30</text><text x="1106" y="224" class="rm-name">搭捷運回旅店</text><text x="1106" y="242" class="rm-sub">交通 · 約 15 分鐘</text></g></g>
+<g class="rm-lane" id="lane-3" data-day="3"><rect class="rm-lane-box" x="12" y="278" width="1867" height="118" rx="14"/><text x="26" y="300" class="rm-lane-label">03 / Day 3 · 恐龍化石與提早南下 · 10/16（五）｜⏰ 17:30 前抵達</text><line class="rm-edge rm-transit" x1="164" y1="349" x2="226" y2="349" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="164" y1="349" x2="226" y2="349"/><text class="rm-edge-label" x="195" y="329" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="195" y="342" text-anchor="middle">20 分</text><line class="rm-edge rm-transit" x1="432" y1="349" x2="494" y2="349" marker-end="url(#rm-arrow-transit)"/><line class="rm-flow rm-transit" x1="432" y1="349" x2="494" y2="349"/><text class="rm-edge-label" x="463" y="329" text-anchor="middle">🚇 捷運</text><text class="rm-edge-label" x="463" y="342" text-anchor="middle">20 分</text><line class="rm-edge rm-drive" x1="703" y1="349" x2="795" y2="349" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="703" y1="349" x2="795" y2="349"/><text class="rm-edge-label" x="749" y="329" text-anchor="middle">🚗 自駕</text><text class="rm-edge-label" x="749" y="342" text-anchor="middle">1 小時 10 分</text><line class="rm-edge rm-drive" x1="931" y1="349" x2="1023" y2="349" marker-end="url(#rm-arrow-drive)"/><line class="rm-flow rm-drive" x1="931" y1="349" x2="1023" y2="349"/><text class="rm-edge-label" x="977" y="329" text-anchor="middle">🚗 自駕</text><text class="rm-edge-label" x="977" y="342" text-anchor="middle">1 小時 30 分</text><g class="rm-node k-travel" data-seg="d3-1" tabindex="0" role="button" aria-pressed="false" aria-label="08:45，退房、行李放上車，交通 · 約 20 分鐘"><title>08:45，退房、行李放上車，交通 · 約 20 分鐘</title><rect class="rm-box" x="26" y="314" width="138" height="70" rx="10"/><text x="39" y="334" class="rm-time">08:45</text><text x="39" y="356" class="rm-name">退房、行李放上車</text><text x="39" y="374" class="rm-sub">交通 · 約 20 分鐘</text></g><g class="rm-node k-attraction" data-seg="d3-2" tabindex="0" role="button" aria-pressed="false" aria-label="09:30，國立臺灣博物館 土銀展示館，景點 · 約 1 小時 30 分"><title>09:30，國立臺灣博物館 土銀展示館，景點 · 約 1 小時 30 分</title><rect class="rm-box" x="229" y="314" width="203" height="70" rx="10"/><text x="242" y="334" class="rm-time">09:30</text><text x="242" y="356" class="rm-name">國立臺灣博物館 土銀展示館</text><text x="242" y="374" class="rm-sub">景點 · 約 1 小時 30 分</text><circle class="rm-dot member-amber" cx="292" cy="330" r="4"/><circle class="rm-dot member-rose" cx="303" cy="330" r="4"/><circle class="rm-dot member-blue" cx="314" cy="330" r="4"/><circle class="rm-dot member-cyan" cx="325" cy="330" r="4"/></g><g class="rm-node k-travel" data-seg="d3-3" tabindex="0" role="button" aria-pressed="false" aria-label="11:15，回旅店取車，國道 1 號南下，交通 · 約 15 分鐘"><title>11:15，回旅店取車，國道 1 號南下，交通 · 約 15 分鐘</title><rect class="rm-box" x="497" y="314" width="206" height="70" rx="10"/><text x="510" y="334" class="rm-time">11:15</text><text x="510" y="356" class="rm-name">回旅店取車，國道 1 號南下</text><text x="510" y="374" class="rm-sub">交通 · 約 15 分鐘</text></g><g class="rm-node k-meal" data-seg="d3-4" tabindex="0" role="button" aria-pressed="false" aria-label="12:30，湖口服務區午餐，用餐 · 約 50 分鐘"><title>12:30，湖口服務區午餐，用餐 · 約 50 分鐘</title><rect class="rm-box" x="798" y="314" width="133" height="70" rx="10"/><text x="811" y="334" class="rm-time">12:30</text><text x="811" y="356" class="rm-name">湖口服務區午餐</text><text x="811" y="374" class="rm-sub">用餐 · 約 50 分鐘</text></g><g class="rm-node k-travel" data-seg="d3-5" tabindex="0" role="button" aria-pressed="false" aria-label="15:00，回到台中家，交通 · 約 20 分鐘"><title>15:00，回到台中家，交通 · 約 20 分鐘</title><rect class="rm-box" x="1026" y="314" width="133" height="70" rx="10"/><text x="1039" y="334" class="rm-time">15:00</text><text x="1039" y="356" class="rm-name">回到台中家</text><text x="1039" y="374" class="rm-sub">交通 · 約 20 分鐘</text></g></g></svg>
+</div>
+<ul class="rm-legend" aria-label="圖例"><li><span class="rm-swatch k-attraction"></span>景點 6</li><li><span class="rm-swatch k-meal"></span>用餐 5</li><li><span class="rm-swatch k-break"></span>休息 1</li><li><span class="rm-swatch k-travel"></span>交通 7</li><li><span class="rm-line rm-drive"></span>開車／叫車</li><li><span class="rm-line rm-transit"></span>大眾運輸</li><li><span class="rm-line rm-walk"></span>步行</li></ul>
+<div class="rm-detail" aria-live="polite"><p class="rm-detail-empty">點選路線圖上的任一站，詳細內容會顯示在這裡</p></div>
+</section>
+
         <section class="day-panel" id="day-1" role="tabpanel" aria-labelledby="tab-day-1">
 <div class="day-header"><span class="day-badge">Day 1</span><h2 class="day-title">北上與台北 101</h2><span class="day-date">10/14（三）</span></div>
 <div class="weather"><span class="weather-summary">🌦️ 多雲，午後短暫陣雨</span><span>24–29°C</span><span>降雨 30%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
 <div class="callout callout-time"><span class="callout-title">⏰ 固定時間</span><p><span class="board-time">09:00</span> 後出發｜爸爸上午有線上會議，結束後才能出發</p></div>
-<article class="segment morning">
+<article class="segment morning" id="seg-d1-1">
 <div class="segment-head"><span class="board-time">09:00</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 1 小時 15 分</span></div>
 <h3>台中出發，國道 1 號北上</h3>
 <p class="notes">爸爸開車，其他人可以在車上休息。</p>
 <ul class="tips"><li>想避開大貨車可改走國道 3 號，但距離較長；出發前用導航比較兩條路線的實際時間再決定</li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E4%B8%AD%E5%87%BA%E7%99%BC%EF%BC%8C%E5%9C%8B%E9%81%93%201%20%E8%99%9F%E5%8C%97%E4%B8%8A" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment break">
+<article class="segment break" id="seg-d1-2">
 <div class="segment-head"><span class="board-time">10:15</span><span class="spot-tag tag-break">休息</span><span class="duration">約 20 分鐘</span></div>
 <h3>湖口服務區</h3>
 <p class="notes">上廁所、買飲料、伸展一下。</p>
 <ul class="highlights"><li class="member-amber"><span class="member-chip">👨 爸爸</span><span>開了一個多小時，下車走一走再上路</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>買點心</span></li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment morning">
+<article class="segment morning" id="seg-d1-3">
 <div class="segment-head"><span class="board-time">11:45</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
 <h3>旅店停車、寄放行李</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 10 分</span></div><p>下交流道後直接開到旅店，車停好之後三天市區都不開車</p></div>
@@ -923,7 +1330,7 @@ a {
 <p class="verify">⚠️ 待確認：入住前能否先停車與寄放行李，出發前一天打電話給旅店確認</p>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a><a class="map-btn map-btn-route" href="https://www.google.com/maps/dir/?api=1&amp;origin=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80&amp;destination=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99&amp;travelmode=driving" target="_blank" rel="noopener">🧭 路線導航</a></div>
 </article>
-<article class="segment break">
+<article class="segment break" id="seg-d1-4">
 <div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 50 分鐘</span></div>
 <h3>台北 101 購物中心美食街午餐</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 25 分鐘</span></div><p>臺北車站搭淡水信義線往象山方向，台北101/世貿站下車</p></div>
@@ -931,7 +1338,7 @@ a {
 <ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>先找有座位的區域，媽媽坐著等，其他人去買</span></li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97101%E8%B3%BC%E7%89%A9%E4%B8%AD%E5%BF%83" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment afternoon">
+<article class="segment afternoon" id="seg-d1-5">
 <div class="segment-head"><span class="board-time">13:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span></div>
 <h3>台北 101 觀景台</h3>
 <p class="notes">看完直接在樓下叫車前往下一站。</p>
@@ -940,7 +1347,7 @@ a {
 <p class="verify">⚠️ 待確認：票價、營業時間與線上購票方式以官網公告為準</p>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97101%E8%A7%80%E6%99%AF%E5%8F%B0" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.taipei-101.com.tw/" target="_blank" rel="noopener">🔗 台北101 官方網站</a></div>
 </article>
-<article class="segment afternoon has-rain">
+<article class="segment afternoon has-rain" id="seg-d1-6">
 <div class="plan plan-sun">
 <div class="segment-head"><span class="board-time">15:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span><span class="badge badge-rain">有雨備</span></div>
 <h3>臺北市兒童新樂園</h3>
@@ -961,7 +1368,7 @@ a {
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E7%A7%91%E5%AD%B8%E6%95%99%E8%82%B2%E9%A4%A8" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntsec.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣科學教育館</a><a class="source-link" href="https://www.tam.gov.taipei/" target="_blank" rel="noopener">🔗 臺北市立天文科學教育館</a></div>
 </div>
 </article>
-<article class="segment break has-rain">
+<article class="segment break has-rain" id="seg-d1-7">
 <div class="plan plan-sun">
 <div class="segment-head"><span class="board-time">17:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時 15 分</span><span class="badge badge-rain">有雨備</span></div>
 <h3>士林夜市晚餐</h3>
@@ -979,7 +1386,7 @@ a {
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </div>
 </article>
-<article class="segment evening">
+<article class="segment evening" id="seg-d1-8">
 <div class="segment-head"><span class="board-time">19:15</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
 <h3>回旅店辦理入住</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>劍潭站搭淡水信義線到臺北車站</p></div>
@@ -992,7 +1399,7 @@ a {
 <div class="day-header"><span class="day-badge">Day 2</span><h2 class="day-title">動物園上午場與室內下午</h2><span class="day-date">10/15（四）</span></div>
 <div class="weather"><span class="weather-summary">🌦️ 午後雷陣雨</span><span>23–28°C</span><span>降雨 60%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
 <div class="callout callout-fix"><span class="callout-title">✅ 修正</span><p><strong>動物園改成上午場、下午全走室內</strong></p><p>週四午後降雨機率較高，12:00 前離園；出門時已經下大雨就直接改去鐵道部園區。</p></div>
-<article class="segment morning has-rain">
+<article class="segment morning has-rain" id="seg-d2-1">
 <div class="plan plan-sun">
 <div class="segment-head"><span class="board-time">09:00</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 3 小時</span><span class="badge badge-rain">有雨備</span></div>
 <h3>臺北市立動物園</h3>
@@ -1015,7 +1422,7 @@ a {
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E5%8D%9A%E7%89%A9%E9%A4%A8%E9%90%B5%E9%81%93%E9%83%A8%E5%9C%92%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntm.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣博物館</a></div>
 </div>
 </article>
-<article class="segment break has-rain">
+<article class="segment break has-rain" id="seg-d2-2">
 <div class="plan plan-sun">
 <div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時</span><span class="badge badge-rain">有雨備</span></div>
 <h3>臺北車站周邊午餐</h3>
@@ -1031,14 +1438,14 @@ a {
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </div>
 </article>
-<article class="segment afternoon">
+<article class="segment afternoon" id="seg-d2-3">
 <div class="segment-head"><span class="board-time">13:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時</span></div>
 <h3>台北地下街</h3>
 <p class="notes">動漫周邊、模型與扭蛋店集中，全程在地下街不怕下雨。</p>
 <ul class="highlights"><li class="member-violet"><span class="member-chip">👩 媽媽</span><span>逛累了先回旅店休息，步行就到</span></li><li class="member-rose"><span class="member-chip">👧 姊姊</span><span>動漫周邊</span></li><li class="member-blue"><span class="member-chip">👦 哥哥</span><span>模型與遊戲店</span></li><li class="member-cyan"><span class="member-chip">🧒 妹妹</span><span>整排扭蛋機</span></li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8C%97%E5%9C%B0%E4%B8%8B%E8%A1%97" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment afternoon has-rain">
+<article class="segment afternoon has-rain" id="seg-d2-4">
 <div class="plan plan-sun">
 <div class="segment-head"><span class="board-time">15:45</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 2 小時</span><span class="badge badge-rain">有雨備</span></div>
 <h3>西門町</h3>
@@ -1057,14 +1464,14 @@ a {
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%90%AC%E5%B9%B4%E5%95%86%E6%A5%AD%E5%A4%A7%E6%A8%93" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </div>
 </article>
-<article class="segment break">
+<article class="segment break" id="seg-d2-5">
 <div class="segment-head"><span class="board-time">18:00</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 1 小時 15 分</span></div>
 <h3>西門町晚餐</h3>
 <p class="buffer">⏳ 已預留 20 分鐘排隊／等候：熱門店家先抽號碼牌再逛</p>
 <ul class="highlights"><li class="member-amber"><span class="member-chip">👨 爸爸</span><span>先確認店家有沒有 5 人座位</span></li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%A5%BF%E9%96%80%E7%94%BA" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment evening">
+<article class="segment evening" id="seg-d2-6">
 <div class="segment-head"><span class="board-time">19:30</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 15 分鐘</span></div>
 <h3>搭捷運回旅店</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-BL">板南線</span><span class="duration">約 15 分鐘</span></div><p>西門站搭板南線到臺北車站</p></div>
@@ -1077,7 +1484,7 @@ a {
 <div class="weather"><span class="weather-summary">🌦️ 多雲時晴</span><span>23–29°C</span><span>降雨 20%</span><small>來源：中央氣象署（範例資料）（2026-10-11 查詢）</small></div>
 <div class="callout callout-fix"><span class="callout-title">✅ 修正</span><p><strong>最後一天提早南下</strong></p><p>原本 14:00 才離開台北，遇上週五塞車可能趕不上 17:30；改成上午只排一個室內點，11:15 出發。</p></div>
 <div class="callout callout-time"><span class="callout-title">⏰ 固定時間</span><p><span class="board-time">17:30</span> 前抵達｜妹妹 18:00 有才藝課，要先回到台中家</p></div>
-<article class="segment morning">
+<article class="segment morning" id="seg-d3-1">
 <div class="segment-head"><span class="board-time">08:45</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
 <h3>退房、行李放上車</h3>
 <p class="notes">車先留在旅店停車場，人輕裝出門。</p>
@@ -1085,7 +1492,7 @@ a {
 <p class="verify">⚠️ 待確認：退房後能否繼續停車到中午，入住時先問旅店</p>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment morning">
+<article class="segment morning" id="seg-d3-2">
 <div class="segment-head"><span class="board-time">09:30</span><span class="spot-tag tag-attraction">景點</span><span class="duration">約 1 小時 30 分</span></div>
 <h3>國立臺灣博物館 土銀展示館</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>臺北車站搭淡水信義線到台大醫院站，出站步行約 5 分鐘</p></div>
@@ -1094,20 +1501,20 @@ a {
 <p class="verify">⚠️ 待確認：開館時間、休館日與票價以官網為準</p>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%9C%8B%E7%AB%8B%E8%87%BA%E7%81%A3%E5%8D%9A%E7%89%A9%E9%A4%A8%E5%9C%9F%E9%8A%80%E5%B1%95%E7%A4%BA%E9%A4%A8" target="_blank" rel="noopener">📍 Google Maps</a><a class="source-link" href="https://www.ntm.gov.tw/" target="_blank" rel="noopener">🔗 國立臺灣博物館</a></div>
 </article>
-<article class="segment morning">
+<article class="segment morning" id="seg-d3-3">
 <div class="segment-head"><span class="board-time">11:15</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 15 分鐘</span></div>
 <h3>回旅店取車，國道 1 號南下</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚇 捷運</span><span class="line line-R">淡水信義線</span><span class="duration">約 20 分鐘</span></div><p>台大醫院站搭淡水信義線回臺北車站</p></div>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99" target="_blank" rel="noopener">📍 Google Maps</a></div>
 </article>
-<article class="segment break">
+<article class="segment break" id="seg-d3-4">
 <div class="segment-head"><span class="board-time">12:30</span><span class="spot-tag tag-meal">用餐</span><span class="duration">約 50 分鐘</span></div>
 <h3>湖口服務區午餐</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 10 分</span></div></div>
 <ul class="tips"><li>北部路段塞車的話，改到下一個服務區吃，不要為了吃飯繞路</li></ul>
 <div class="links"><a class="map-btn" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80" target="_blank" rel="noopener">📍 Google Maps</a><a class="map-btn map-btn-route" href="https://www.google.com/maps/dir/?api=1&amp;origin=%E8%87%BA%E5%8C%97%E8%BB%8A%E7%AB%99&amp;destination=%E6%B9%96%E5%8F%A3%E6%9C%8D%E5%8B%99%E5%8D%80&amp;travelmode=driving" target="_blank" rel="noopener">🧭 路線導航</a></div>
 </article>
-<article class="segment afternoon">
+<article class="segment afternoon" id="seg-d3-5">
 <div class="segment-head"><span class="board-time">15:00</span><span class="spot-tag tag-travel">交通</span><span class="duration">約 20 分鐘</span></div>
 <h3>回到台中家</h3>
 <div class="transit"><div class="transit-head"><span class="transit-mode">🚗 自駕</span><span class="duration">約 1 小時 30 分</span></div></div>
@@ -1174,14 +1581,69 @@ a {
             const tabs = Array.from(document.querySelectorAll('.day-tab'));
             const panels = Array.from(document.querySelectorAll('.day-panel'));
             const planButtons = Array.from(document.querySelectorAll('.plan-btn'));
+            const layoutButtons = Array.from(document.querySelectorAll('.layout-btn'));
             const nav = document.querySelector('.trip-nav');
             const main = document.querySelector('main');
-            const planKey = 'travel-plan:' + tripName + ':plan';
+            const map = document.getElementById('route-map');
+            const viewport = map.querySelector('.rm-viewport');
+            const svg = map.querySelector('.rm-svg');
+            const lanes = Array.from(svg.querySelectorAll('.rm-lane'));
+            const nodes = Array.from(svg.querySelectorAll('.rm-node'));
+            const notes = Array.from(map.querySelectorAll('.rm-note'));
+            const detail = map.querySelector('.rm-detail');
+            const zoomLevel = map.querySelector('.rm-zoom-level');
+            const baseWidth = Number(svg.dataset.width);
+            const zoomSteps = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
+            const storeKey = 'travel-plan:' + tripName + ':';
+            let current = '';
+            let zoom = 1;
+
+            function store(key, value) {
+                try { localStorage.setItem(storeKey + key, value); } catch (e) {}
+            }
+
+            function stored(key) {
+                try { return localStorage.getItem(storeKey + key); } catch (e) { return null; }
+            }
+
+            function isMap() {
+                return root.dataset.layout === 'map';
+            }
+
+            function targets() {
+                return tabs.map((tab) => tab.dataset.target)
+                    .filter((id) => isMap() || panels.some((panel) => panel.id === id));
+            }
+
+            function focusDay(id) {
+                const day = id.startsWith('day-') ? id.slice(4) : '';
+                if (day) {
+                    svg.dataset.focus = day;
+                } else {
+                    delete svg.dataset.focus;
+                }
+                lanes.forEach((lane) => lane.classList.toggle('is-focus', lane.dataset.day === day));
+                notes.forEach((note) => { note.hidden = note.dataset.day !== (day || 'overview'); });
+            }
+
+            function revealLane(id) {
+                const lane = lanes.find((item) => 'day-' + item.dataset.day === id);
+                if (!lane) return false;
+                viewport.scrollTo({ left: 0, behavior: 'smooth' });
+                const rect = lane.getBoundingClientRect();
+                if (rect.top < nav.offsetHeight || rect.bottom > window.innerHeight) {
+                    window.scrollBy({ top: rect.top - nav.offsetHeight - 96, behavior: 'smooth' });
+                }
+                return true;
+            }
 
             function showPanel(id) {
-                if (!panels.some((panel) => panel.id === id)) {
-                    id = panels.length ? panels[0].id : '';
+                const available = targets();
+                if (!available.includes(id)) {
+                    id = available.includes(current) ? current : (available.find((item) => item !== 'overview') || '');
                 }
+                current = id;
+                root.dataset.panel = id;
                 panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === id));
                 tabs.forEach((tab) => {
                     const selected = tab.dataset.target === id;
@@ -1191,6 +1653,7 @@ a {
                         tab.scrollIntoView({ block: 'nearest', inline: 'center' });
                     }
                 });
+                focusDay(id);
             }
 
             function setPlan(plan) {
@@ -1198,22 +1661,64 @@ a {
                 planButtons.forEach((button) => {
                     button.setAttribute('aria-pressed', button.dataset.plan === plan ? 'true' : 'false');
                 });
-                try { localStorage.setItem(planKey, plan); } catch (e) {}
+                store('plan', plan);
+            }
+
+            function setLayout(layout) {
+                root.dataset.layout = layout;
+                layoutButtons.forEach((button) => {
+                    button.setAttribute('aria-pressed', button.dataset.layout === layout ? 'true' : 'false');
+                });
+                store('layout', layout);
+                showPanel(current);
+            }
+
+            function setZoom(value) {
+                zoom = Math.min(1.5, Math.max(0.25, value));
+                svg.style.width = Math.round(baseWidth * zoom) + 'px';
+                svg.style.height = 'auto';
+                zoomLevel.textContent = Math.round(zoom * 100) + '%';
+            }
+
+            function scrollToMain() {
+                const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
+                if (window.scrollY > top) {
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            }
+
+            function selectNode(node) {
+                const source = document.getElementById('seg-' + node.dataset.seg);
+                if (!source) return;
+                nodes.forEach((item) => item.setAttribute('aria-pressed', item === node ? 'true' : 'false'));
+                const card = source.cloneNode(true);
+                card.removeAttribute('id');
+                const back = document.createElement('button');
+                back.type = 'button';
+                back.className = 'btn btn-secondary rm-open-list';
+                back.textContent = '📋 在清單中查看';
+                back.addEventListener('click', () => {
+                    setLayout('list');
+                    showPanel('day-' + node.dataset.seg.split('-')[0].slice(1));
+                    source.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                });
+                detail.replaceChildren(card, back);
+                detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
 
             tabs.forEach((tab) => {
                 tab.addEventListener('click', () => {
                     showPanel(tab.dataset.target);
                     try { history.replaceState(null, '', '#' + tab.dataset.target); } catch (e) {}
-                    const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
-                    if (window.scrollY > top) {
-                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    if (!(isMap() && revealLane(current))) {
+                        scrollToMain();
                     }
                 });
                 tab.addEventListener('keydown', (event) => {
                     const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
                     if (!step) return;
-                    const next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+                    const visible = tabs.filter((item) => item.offsetParent !== null);
+                    const next = visible[(visible.indexOf(tab) + step + visible.length) % visible.length];
                     next.focus();
                     next.click();
                 });
@@ -1223,10 +1728,40 @@ a {
                 button.addEventListener('click', () => setPlan(button.dataset.plan));
             });
 
-            let savedPlan = null;
-            try { savedPlan = localStorage.getItem(planKey); } catch (e) {}
+            layoutButtons.forEach((button) => {
+                button.addEventListener('click', () => setLayout(button.dataset.layout));
+            });
+
+            nodes.forEach((node) => {
+                node.addEventListener('click', () => selectNode(node));
+                node.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectNode(node);
+                    }
+                });
+            });
+
+            map.querySelectorAll('.rm-zoom-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const action = button.dataset.zoom;
+                    if (action === 'fit') {
+                        setZoom((viewport.clientWidth - 4) / baseWidth);
+                        return;
+                    }
+                    const index = zoomSteps.findIndex((step) => step >= zoom - 0.001);
+                    const next = action === 'in'
+                        ? zoomSteps.find((step) => step > zoom + 0.001)
+                        : zoomSteps.slice().reverse().find((step) => step < zoom - 0.001);
+                    setZoom(next || zoomSteps[index] || zoom);
+                });
+            });
+
+            const savedPlan = stored('plan');
             setPlan(savedPlan === 'rain' ? 'rain' : 'sun');
-            showPanel(decodeURIComponent(location.hash.slice(1)));
+            current = decodeURIComponent(location.hash.slice(1));
+            setZoom(1);
+            setLayout(stored('layout') === 'map' ? 'map' : 'list');
         })();
     </script>
 </body>

@@ -15,6 +15,7 @@ source "$(dirname "$0")/lib/common.sh"
 # and placeholders are replaced in a single pass so values are never re-scanned.
 JQ_PROGRAM=$(cat << 'JQ'
 include "itinerary";
+include "route-map";
 
 def board($time): "<span class=\"board-time\">\($time | esc)</span>";
 
@@ -79,11 +80,11 @@ def segment_body($travelers; $badge):
       ]
     | lines_html;
 
-def segment_html($travelers):
+def segment_html($travelers; $id):
     . as $segment
     | (if .type == "meal" or .type == "break" then "break" else period end) as $class
     | if .rain_plan then
-        "<article class=\"segment \($class) has-rain\">\n"
+        "<article class=\"segment \($class) has-rain\" id=\"seg-\($id)\">\n"
         + "<div class=\"plan plan-sun\">\n"
         + segment_body($travelers; "<span class=\"badge badge-rain\">有雨備</span>")
         + "\n</div>\n<div class=\"plan plan-rain\">\n"
@@ -91,7 +92,7 @@ def segment_html($travelers):
             | segment_body($travelers; "<span class=\"badge badge-rain-on\">⛈️ 雨備</span>"))
         + "\n</div>\n</article>"
       else
-        "<article class=\"segment \($class)\">\n\(segment_body($travelers; ""))\n</article>"
+        "<article class=\"segment \($class)\" id=\"seg-\($id)\">\n\(segment_body($travelers; ""))\n</article>"
       end;
 
 def change_html:
@@ -126,7 +127,7 @@ def day_panel($trip):
         weather_html,
         ($trip.changes[] | select(.day == $day.day) | change_html),
         ($trip.constraints[] | select(.day == $day.day) | constraint_html),
-        (.segments[] | segment_html($trip.travelers)),
+        (.segments | to_entries[] | .key as $index | .value | segment_html($trip.travelers; "d\($day.day)-\($index + 1)")),
         (if .travel_notes then "<p class=\"travel-time\">🚗 \(.travel_notes | esc)</p>" else empty end),
         "</section>"
       ]
@@ -201,7 +202,8 @@ normalize
         else "" end
     ),
     DAY_TABS: (
-        [(.itinerary[] | day_tab),
+        ["<button type=\"button\" class=\"day-tab map-only\" role=\"tab\" id=\"tab-overview\" data-target=\"overview\" aria-controls=\"route-map\"><span>總覽</span><small>全部天數</small></button>",
+         (.itinerary[] | day_tab),
          "<button type=\"button\" class=\"day-tab\" role=\"tab\" id=\"tab-info\" data-target=\"info\" aria-controls=\"info\"><span>須知</span><small>住宿・提醒</small></button>"]
         | join("\n")
     ),
@@ -214,6 +216,7 @@ normalize
         else "" end
     ),
     DAY_PANELS: ([.itinerary[] | day_panel($trip)] | join("\n\n")),
+    ROUTE_MAP: route_map_html($trip),
     OVERVIEW: overview_html($trip),
     TRAVEL_TIPS: ([$tips[] | "<li>\(esc)</li>"] | join("\n"))
   } as $vars

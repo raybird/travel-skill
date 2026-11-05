@@ -28,10 +28,16 @@
                 {{DAY_TABS}}
             </div>
             {{PLAN_TOGGLE}}
+            <div class="layout-toggle" role="group" aria-label="版面">
+                <button type="button" class="layout-btn" data-layout="list" aria-pressed="true">📋 清單</button>
+                <button type="button" class="layout-btn" data-layout="map" aria-pressed="false">🗺️ 路線圖</button>
+            </div>
         </div>
     </nav>
 
     <main class="container">
+        {{ROUTE_MAP}}
+
         {{DAY_PANELS}}
 
         <section class="day-panel info-panel" id="info" role="tabpanel" aria-labelledby="tab-info">
@@ -85,14 +91,69 @@
             const tabs = Array.from(document.querySelectorAll('.day-tab'));
             const panels = Array.from(document.querySelectorAll('.day-panel'));
             const planButtons = Array.from(document.querySelectorAll('.plan-btn'));
+            const layoutButtons = Array.from(document.querySelectorAll('.layout-btn'));
             const nav = document.querySelector('.trip-nav');
             const main = document.querySelector('main');
-            const planKey = 'travel-plan:' + tripName + ':plan';
+            const map = document.getElementById('route-map');
+            const viewport = map.querySelector('.rm-viewport');
+            const svg = map.querySelector('.rm-svg');
+            const lanes = Array.from(svg.querySelectorAll('.rm-lane'));
+            const nodes = Array.from(svg.querySelectorAll('.rm-node'));
+            const notes = Array.from(map.querySelectorAll('.rm-note'));
+            const detail = map.querySelector('.rm-detail');
+            const zoomLevel = map.querySelector('.rm-zoom-level');
+            const baseWidth = Number(svg.dataset.width);
+            const zoomSteps = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
+            const storeKey = 'travel-plan:' + tripName + ':';
+            let current = '';
+            let zoom = 1;
+
+            function store(key, value) {
+                try { localStorage.setItem(storeKey + key, value); } catch (e) {}
+            }
+
+            function stored(key) {
+                try { return localStorage.getItem(storeKey + key); } catch (e) { return null; }
+            }
+
+            function isMap() {
+                return root.dataset.layout === 'map';
+            }
+
+            function targets() {
+                return tabs.map((tab) => tab.dataset.target)
+                    .filter((id) => isMap() || panels.some((panel) => panel.id === id));
+            }
+
+            function focusDay(id) {
+                const day = id.startsWith('day-') ? id.slice(4) : '';
+                if (day) {
+                    svg.dataset.focus = day;
+                } else {
+                    delete svg.dataset.focus;
+                }
+                lanes.forEach((lane) => lane.classList.toggle('is-focus', lane.dataset.day === day));
+                notes.forEach((note) => { note.hidden = note.dataset.day !== (day || 'overview'); });
+            }
+
+            function revealLane(id) {
+                const lane = lanes.find((item) => 'day-' + item.dataset.day === id);
+                if (!lane) return false;
+                viewport.scrollTo({ left: 0, behavior: 'smooth' });
+                const rect = lane.getBoundingClientRect();
+                if (rect.top < nav.offsetHeight || rect.bottom > window.innerHeight) {
+                    window.scrollBy({ top: rect.top - nav.offsetHeight - 96, behavior: 'smooth' });
+                }
+                return true;
+            }
 
             function showPanel(id) {
-                if (!panels.some((panel) => panel.id === id)) {
-                    id = panels.length ? panels[0].id : '';
+                const available = targets();
+                if (!available.includes(id)) {
+                    id = available.includes(current) ? current : (available.find((item) => item !== 'overview') || '');
                 }
+                current = id;
+                root.dataset.panel = id;
                 panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === id));
                 tabs.forEach((tab) => {
                     const selected = tab.dataset.target === id;
@@ -102,6 +163,7 @@
                         tab.scrollIntoView({ block: 'nearest', inline: 'center' });
                     }
                 });
+                focusDay(id);
             }
 
             function setPlan(plan) {
@@ -109,22 +171,64 @@
                 planButtons.forEach((button) => {
                     button.setAttribute('aria-pressed', button.dataset.plan === plan ? 'true' : 'false');
                 });
-                try { localStorage.setItem(planKey, plan); } catch (e) {}
+                store('plan', plan);
+            }
+
+            function setLayout(layout) {
+                root.dataset.layout = layout;
+                layoutButtons.forEach((button) => {
+                    button.setAttribute('aria-pressed', button.dataset.layout === layout ? 'true' : 'false');
+                });
+                store('layout', layout);
+                showPanel(current);
+            }
+
+            function setZoom(value) {
+                zoom = Math.min(1.5, Math.max(0.25, value));
+                svg.style.width = Math.round(baseWidth * zoom) + 'px';
+                svg.style.height = 'auto';
+                zoomLevel.textContent = Math.round(zoom * 100) + '%';
+            }
+
+            function scrollToMain() {
+                const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
+                if (window.scrollY > top) {
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            }
+
+            function selectNode(node) {
+                const source = document.getElementById('seg-' + node.dataset.seg);
+                if (!source) return;
+                nodes.forEach((item) => item.setAttribute('aria-pressed', item === node ? 'true' : 'false'));
+                const card = source.cloneNode(true);
+                card.removeAttribute('id');
+                const back = document.createElement('button');
+                back.type = 'button';
+                back.className = 'btn btn-secondary rm-open-list';
+                back.textContent = '📋 在清單中查看';
+                back.addEventListener('click', () => {
+                    setLayout('list');
+                    showPanel('day-' + node.dataset.seg.split('-')[0].slice(1));
+                    source.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                });
+                detail.replaceChildren(card, back);
+                detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
 
             tabs.forEach((tab) => {
                 tab.addEventListener('click', () => {
                     showPanel(tab.dataset.target);
                     try { history.replaceState(null, '', '#' + tab.dataset.target); } catch (e) {}
-                    const top = main.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
-                    if (window.scrollY > top) {
-                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    if (!(isMap() && revealLane(current))) {
+                        scrollToMain();
                     }
                 });
                 tab.addEventListener('keydown', (event) => {
                     const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
                     if (!step) return;
-                    const next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+                    const visible = tabs.filter((item) => item.offsetParent !== null);
+                    const next = visible[(visible.indexOf(tab) + step + visible.length) % visible.length];
                     next.focus();
                     next.click();
                 });
@@ -134,10 +238,40 @@
                 button.addEventListener('click', () => setPlan(button.dataset.plan));
             });
 
-            let savedPlan = null;
-            try { savedPlan = localStorage.getItem(planKey); } catch (e) {}
+            layoutButtons.forEach((button) => {
+                button.addEventListener('click', () => setLayout(button.dataset.layout));
+            });
+
+            nodes.forEach((node) => {
+                node.addEventListener('click', () => selectNode(node));
+                node.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectNode(node);
+                    }
+                });
+            });
+
+            map.querySelectorAll('.rm-zoom-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const action = button.dataset.zoom;
+                    if (action === 'fit') {
+                        setZoom((viewport.clientWidth - 4) / baseWidth);
+                        return;
+                    }
+                    const index = zoomSteps.findIndex((step) => step >= zoom - 0.001);
+                    const next = action === 'in'
+                        ? zoomSteps.find((step) => step > zoom + 0.001)
+                        : zoomSteps.slice().reverse().find((step) => step < zoom - 0.001);
+                    setZoom(next || zoomSteps[index] || zoom);
+                });
+            });
+
+            const savedPlan = stored('plan');
             setPlan(savedPlan === 'rain' ? 'rain' : 'sun');
-            showPanel(decodeURIComponent(location.hash.slice(1)));
+            current = decodeURIComponent(location.hash.slice(1));
+            setZoom(1);
+            setLayout(stored('layout') === 'map' ? 'map' : 'list');
         })();
     </script>
 </body>
