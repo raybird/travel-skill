@@ -181,11 +181,12 @@ JSON
         [[ -n "$seg" ]] || continue
         grep -q "id=\"seg-$seg\"" "$TMP_DIR/example.html" || ((missing_cards++))
     done <<< "$node_ids"
-    if [[ "$node_count" -eq "$segment_count" && "$missing_cards" -eq 0 ]] \
+    stop_count=$(grep -o '<button type="button" class="rv-node"' "$TMP_DIR/example.html" | wc -l)
+    if [[ "$node_count" -eq "$segment_count" && "$stop_count" -eq "$segment_count" && "$missing_cards" -eq 0 ]] \
         && [[ $(grep -c 'class="rm-lane"' "$TMP_DIR/example.html") -eq $(jq '.itinerary | length' "$EXAMPLE.json") ]]; then
-        echo "  ✅ route map has one lane per day and one node per segment ($node_count), each linked to its card"
+        echo "  ✅ route map has one lane per day and one node per segment ($node_count, phone route $stop_count), each linked to its card"
     else
-        fail "route map nodes ($node_count) / segments ($segment_count) / missing cards ($missing_cards) do not match"
+        fail "route map nodes ($node_count) / phone stops ($stop_count) / segments ($segment_count) / missing cards ($missing_cards) do not match"
     fi
 
     if "$SKILL_DIR/scripts/format-markdown.sh" "$EXAMPLE.json" "$TMP_DIR/example.md"; then

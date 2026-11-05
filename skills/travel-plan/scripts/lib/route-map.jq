@@ -1,6 +1,7 @@
 # Travel Plan - route map (路線圖) layout for the Mobile HTML.
 # One dashed lane per day, one node per segment, edges labelled with the transit
-# into the next stop. Coordinates are computed here from estimated text widths so
+# into the next stop. A day wider than rm_max_width continues on the next row, so
+# the diagram fits the page width and never scrolls sideways. Coordinates are computed here from estimated text widths so
 # the SVG is deterministic and needs no layout code in the browser.
 # Loaded by format-html.sh after "itinerary"; uses esc / type_tag / mode_label / duration_text.
 
@@ -8,7 +9,6 @@ include "itinerary";
 
 # ---- geometry -------------------------------------------------------------
 
-def rm_lane_h: 118;
 def rm_lane_gap: 14;
 def rm_top: 14;
 def rm_left: 26;
@@ -16,6 +16,9 @@ def rm_node_h: 70;
 def rm_node_min: 120;
 def rm_node_max: 232;
 def rm_pad: 13;
+def rm_max_width: 1100;
+def rm_head_h: 36;
+def rm_row_gap: 46;
 
 # Approximate text width in em: CJK and emoji ≈ 1, Latin ≈ 0.6, joiners/selectors 0
 def rm_units:
@@ -85,32 +88,40 @@ def rm_lane_label:
       ]
     | join(" · ");
 
-# [{day, segments:[{seg, id, x, w, gap}], label, constraints}] with x positions
+def rm_label_max: (rm_max_width - 2 * rm_left) / 12;
+
+def rm_row_y($row): rm_head_h + $row * (rm_node_h + rm_row_gap);
+
+# [{day, top, height, label, segments:[{seg, id, x, w, gap, row}]}]; a node that
+# would cross rm_max_width starts a new row at the left edge.
 def rm_layout($constraints):
     [.itinerary[]
         | . as $day
         | ([$constraints[] | select(.day == $day.day) | "⏰ \(.time // "") \(constraint_label)"] | join("　")) as $constraint_text
+        | ([.segments | to_entries[] | { seg: .value, id: "d\($day.day)-\(.key + 1)", w: (.value | rm_node_width), gap: (.value | rm_edge_gap) }]
+            | reduce .[] as $node ({ x: rm_left, row: 0, out: [] };
+                (if (.out | length) == 0 then { x: rm_left, row: 0 }
+                 elif .x + $node.gap + $node.w > rm_max_width - rm_left then { x: rm_left, row: (.row + 1) }
+                 else { x: (.x + $node.gap), row: .row } end) as $at
+                | { x: ($at.x + $node.w), row: $at.row, out: (.out + [$node + $at]) })
+            | .out) as $segments
         | {
             day: .day,
-            label: (rm_lane_label + (if $constraint_text != "" then "｜\($constraint_text)" else "" end)),
-            segments: (
-                [.segments | to_entries[] | { seg: .value, id: "d\($day.day)-\(.key + 1)", w: (.value | rm_node_width), gap: (.value | rm_edge_gap) }]
-                | reduce .[] as $node ({ x: rm_left, out: [] };
-                    (if (.out | length) == 0 then rm_left else .x + $node.gap end) as $x
-                    | { x: ($x + $node.w), out: (.out + [$node + { x: $x }]) })
-                | .out
-              )
-          }];
+            label: (rm_lane_label + (if $constraint_text != "" then "｜\($constraint_text)" else "" end) | rm_clip(rm_label_max)),
+            segments: $segments,
+            height: (rm_row_y(([$segments[].row] | max // 0)) + rm_node_h + 12)
+          }]
+    | reduce .[] as $lane ({ top: rm_top, out: [] };
+        { top: (.top + $lane.height + rm_lane_gap), out: (.out + [$lane + { top: .top }]) })
+    | .out;
 
 def rm_canvas_width($lanes):
     [$lanes[]
-        | ((.segments | last | select(.) | .x + .w) // 0),
+        | (.segments[] | .x + .w),
           (.label | rm_units) * 12 + rm_left]
     | (max // 0) + rm_left
     | ceil
     | if . < 320 then 320 else . end;
-
-def rm_lane_top($index): rm_top + $index * (rm_lane_h + rm_lane_gap);
 
 # ---- SVG ------------------------------------------------------------------
 
@@ -153,24 +164,42 @@ def rm_node($y; $travelers):
               else rm_node_variant($x; $y; $w; $travelers) end] | join(""))
       + "</g>";
 
-def rm_edge($x1; $x2; $y):
+# Same row: a straight arrow with the label above it. Next row: down from the
+# previous stop, back along the row gap, down into the stop, label on the bend.
+def rm_edge($from; $to; $top):
     (.transit.mode | rm_mode_class) as $mode
     | rm_edge_lines as $lines
-    | (($x1 + $x2) / 2) as $mid
-    | "<line class=\"rm-edge rm-\($mode)\" x1=\"\($x1)\" y1=\"\($y)\" x2=\"\($x2)\" y2=\"\($y)\" marker-end=\"url(#rm-arrow-\($mode))\"/>"
-      + "<line class=\"rm-flow rm-\($mode)\" x1=\"\($x1)\" y1=\"\($y)\" x2=\"\($x2)\" y2=\"\($y)\"/>"
-      + ([$lines | to_entries[]
-            | "<text class=\"rm-edge-label\" x=\"\($mid)\" y=\"\($y - 7 - (($lines | length) - 1 - .key) * 13)\" text-anchor=\"middle\">\(.value | esc)</text>"]
+    | ($top + rm_row_y($from.row)) as $y1
+    | ($top + rm_row_y($to.row)) as $y2
+    | (if $from.row == $to.row then
+        ($y1 + rm_node_h / 2) as $y
+        | { d: "M\($from.x + $from.w),\($y) H\($to.x - 3)",
+            labels: [$lines | to_entries[]
+                | { x: (($from.x + $from.w + $to.x) / 2), y: ($y - 7 - (($lines | length) - 1 - .key) * 13), text: .value }] }
+       else
+        ($from.x + $from.w / 2) as $fx
+        | ($to.x + $to.w / 2) as $tx
+        | ($y1 + rm_node_h + rm_row_gap / 2) as $mid
+        | { d: "M\($fx),\($y1 + rm_node_h) V\($mid) H\($tx) V\($y2 - 3)",
+            labels: (if ($lines | length) > 0 then [{ x: (($fx + $tx) / 2), y: ($mid + 4), text: ($lines | join(" · ")), halo: true }] else [] end) }
+       end) as $geom
+    | "<path class=\"rm-edge rm-\($mode)\" d=\"\($geom.d)\" marker-end=\"url(#rm-arrow-\($mode))\"/>"
+      + "<path class=\"rm-flow rm-\($mode)\" d=\"\($geom.d)\"/>"
+      + ([$geom.labels[]
+            | (if .halo then
+                ((.text | rm_units) * 11 + 12 | ceil) as $bw
+                | "<rect class=\"rm-label-bg\" x=\"\(.x - $bw / 2)\" y=\"\(.y - 12)\" width=\"\($bw)\" height=\"16\" rx=\"8\"/>"
+               else "" end)
+              + "<text class=\"rm-edge-label\" x=\"\(.x)\" y=\"\(.y)\" text-anchor=\"middle\">\(.text | esc)</text>"]
          | join(""));
 
-def rm_edges($prev; $y):
+def rm_edges($prev; $top):
     .seg as $segment
-    | ($prev.x + $prev.w) as $x1
-    | (.x - 3) as $x2
+    | . as $node
     | ($segment | rm_variants) as $variants
     | if ($variants | length) > 1 and ($segment.rain_plan.transit != null) then
-        [$variants[] | "<g class=\"rplan-\(.plan)\">\(rm_edge($x1; $x2; $y))</g>"] | join("")
-      else $segment | rm_edge($x1; $x2; $y)
+        [$variants[] | "<g class=\"rplan-\(.plan)\">\(rm_edge($prev; $node; $top))</g>"] | join("")
+      else $segment | rm_edge($prev; $node; $top)
       end;
 
 def rm_marker($mode):
@@ -180,20 +209,17 @@ def rm_marker($mode):
 def route_map_svg($trip):
     rm_layout($trip.constraints) as $lanes
     | rm_canvas_width($lanes) as $width
-    | (rm_top * 2 + ($lanes | length) * (rm_lane_h + rm_lane_gap) - rm_lane_gap) as $height
-    | "<svg class=\"rm-svg\" viewBox=\"0 0 \($width) \($height)\" width=\"\($width)\" height=\"\($height)\" data-width=\"\($width)\" role=\"group\" aria-label=\"每日路線圖\">"
+    | ((($lanes | last | select(.) | .top + .height) // rm_top) + rm_top) as $height
+    | "<svg class=\"rm-svg\" viewBox=\"0 0 \($width) \($height)\" width=\"\($width)\" height=\"\($height)\" role=\"group\" aria-label=\"每日路線圖\">"
       + "<defs>\(["drive", "transit", "walk", "plain"] | map(rm_marker(.)) | join(""))</defs>"
       + ([$lanes | to_entries[]
-            | .key as $index
             | .value as $lane
-            | rm_lane_top($index) as $top
-            | ($top + 36) as $node_y
-            | ($node_y + rm_node_h / 2) as $edge_y
+            | $lane.top as $top
             | "<g class=\"rm-lane\" id=\"lane-\($lane.day)\" data-day=\"\($lane.day)\">"
-              + "<rect class=\"rm-lane-box\" x=\"12\" y=\"\($top)\" width=\"\($width - 24)\" height=\"\(rm_lane_h)\" rx=\"14\"/>"
+              + "<rect class=\"rm-lane-box\" x=\"12\" y=\"\($top)\" width=\"\($width - 24)\" height=\"\($lane.height)\" rx=\"14\"/>"
               + rm_text(rm_left; $top + 22; "rm-lane-label"; $lane.label)
-              + ([range(1; $lane.segments | length) as $i | $lane.segments[$i] | rm_edges($lane.segments[$i - 1]; $edge_y)] | join(""))
-              + ([$lane.segments[] | rm_node($node_y; $trip.travelers)] | join(""))
+              + ([range(1; $lane.segments | length) as $i | $lane.segments[$i] | rm_edges($lane.segments[$i - 1]; $top)] | join(""))
+              + ([$lane.segments[] | rm_node($top + rm_row_y(.row); $trip.travelers)] | join(""))
               + "</g>"] | join("\n"))
       + "</svg>";
 
@@ -221,20 +247,72 @@ def rm_note($trip):
       ]
     | "<p class=\"rm-note\" data-day=\"\($day.day | esc)\" hidden>\(join("<span class=\"rm-sep\"> ｜ </span>"))</p>";
 
+# ---- vertical route (phones) ---------------------------------------------
+# Same stops as the SVG, as an HTML list so names wrap instead of being clipped.
+
+def rv_dots($travelers):
+    (.highlights // {}) as $highlights
+    | [$travelers[] | select($highlights[.id] != null) | "<span class=\"rv-dot member-\(.color | esc)\"></span>"]
+    | if length > 0 then "<span class=\"rv-dots\" aria-hidden=\"true\">\(join(""))</span>" else "" end;
+
+def rv_body($travelers):
+    "<span class=\"rv-body\(if .plan then " rplan-\(.plan)" else "" end)\">"
+    + "<span class=\"rv-top\">"
+    + (if .time then "<span class=\"rv-time\">\(.time | esc)</span>" else "" end)
+    + rv_dots($travelers)
+    + (if .plan == "sun" then "<span class=\"rv-flag\">有雨備</span>"
+       elif .plan == "rain" then "<span class=\"rv-flag rv-flag-rain\">⛈️ 雨備</span>"
+       else "" end)
+    + "</span>"
+    + "<span class=\"rv-name\">\(.name // "" | esc)</span>"
+    + (rm_sub | if present then "<span class=\"rv-sub\">\(esc)</span>" else "" end)
+    + "</span>";
+
+def rv_leg_html:
+    "<div class=\"rv-leg rm-\(.transit.mode | rm_mode_class)\(if .plan then " rplan-\(.plan)" else "" end)\">"
+    + (rm_edge_lines | if length > 0 then "<span>\(join(" · ") | esc)</span>" else "" end)
+    + "</div>";
+
+def rv_leg:
+    rm_variants as $variants
+    | if ($variants | length) > 1 and (.rain_plan.transit != null) then
+        [$variants[] | rv_leg_html] | join("")
+      else ({ plan: null } + .) | rv_leg_html
+      end;
+
+def rv_stop($id; $first; $travelers):
+    "<li class=\"rv-stop k-\(.type // "attraction" | esc)\">"
+    + (if $first then "" else rv_leg end)
+    + "<button type=\"button\" class=\"rv-node\" data-seg=\"\($id)\" aria-expanded=\"false\" aria-controls=\"rv-detail-\($id)\">"
+    + ([rm_variants[] | rv_body($travelers)] | join(""))
+    + "</button>"
+    + "<div class=\"rv-detail\" id=\"rv-detail-\($id)\" hidden></div>"
+    + "</li>";
+
+def rv_day($trip):
+    . as $day
+    | [
+        (.date | select(present) | short_date | esc),
+        (.weather.summary | select(present) | "🌦️ \(esc)\(if $day.weather.rain_chance != null then " \($day.weather.rain_chance | esc)%" else "" end)"),
+        ($trip.constraints[] | select(.day == $day.day) | "⏰ \(.time // "" | esc) \(constraint_label)")
+      ] as $meta
+    | "<section class=\"rv-day\" data-day=\"\(.day | esc)\">"
+      + "<h3 class=\"rv-head\"><span class=\"day-badge\">Day \(.day | esc)</span>\(.title // "" | esc)</h3>"
+      + (if ($meta | length) > 0 then "<p class=\"rv-meta\">\($meta | join(" · "))</p>" else "" end)
+      + "<ol class=\"rv-stops\">"
+      + ([.segments | to_entries[] | .key as $index | .value | rv_stop("d\($day.day)-\($index + 1)"; $index == 0; $trip.travelers)] | join(""))
+      + "</ol></section>";
+
 def route_map_html($trip):
     "<section class=\"route-map\" id=\"route-map\" aria-label=\"路線圖\">\n"
-    + "<div class=\"rm-toolbar\">"
-    + "<p class=\"rm-hint\">點任一站看詳情・左右滑動看整天</p>"
-    + "<div class=\"rm-zoom\" role=\"group\" aria-label=\"縮放\">"
-    + "<button type=\"button\" class=\"rm-zoom-btn\" data-zoom=\"out\" aria-label=\"縮小\">−</button>"
-    + "<output class=\"rm-zoom-level\" aria-live=\"polite\">100%</output>"
-    + "<button type=\"button\" class=\"rm-zoom-btn\" data-zoom=\"in\" aria-label=\"放大\">＋</button>"
-    + "<button type=\"button\" class=\"rm-zoom-btn rm-zoom-fit\" data-zoom=\"fit\">整張</button>"
-    + "</div></div>\n"
+    + "<p class=\"rm-hint\"><span class=\"rm-hint-wide\">點任一站看詳情</span><span class=\"rm-hint-narrow\">點任一站展開詳情</span></p>\n"
     + "<p class=\"rm-note\" data-day=\"overview\">\($trip.itinerary | length) 天行程總覽，點上方 Day 分頁聚焦單日</p>\n"
     + ([$trip.itinerary[] | rm_note($trip)] | join("\n")) + "\n"
-    + "<div class=\"rm-viewport\" tabindex=\"0\" role=\"region\" aria-label=\"路線圖，可左右捲動\">\n"
+    + "<div class=\"rm-viewport\">\n"
     + route_map_svg($trip)
+    + "\n</div>\n"
+    + "<div class=\"rm-vertical\">\n"
+    + ([$trip.itinerary[] | rv_day($trip)] | join("\n"))
     + "\n</div>\n"
     + rm_legend($trip) + "\n"
     + "<div class=\"rm-detail\" aria-live=\"polite\"><p class=\"rm-detail-empty\">點選路線圖上的任一站，詳細內容會顯示在這裡</p></div>\n"

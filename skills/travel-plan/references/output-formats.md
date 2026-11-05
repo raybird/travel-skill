@@ -413,9 +413,10 @@ Behavior:
 
 - Day tabs focus a lane and dim the others; the 總覽 tab (route map only) shows all days; 須知 shows the info panel.
 - Selecting a node copies that segment's list card (`id="seg-d<day>-<n>"`) below the diagram, with a button back to the list.
-- Zoom −／＋／整張 rescales the SVG; wide days scroll horizontally inside the diagram, never the page.
+- The diagram always fits the page width and never scrolls sideways: a day whose stops would pass 1100px continues on the next row (the arrow drops down and returns to the left edge, with its transit label on the bend), and the SVG scales down with the window.
+- At 860px and below (phones and portrait tablets), where the scaled text would get too small, the SVG is replaced by a vertical route of the selected day (all days under 總覽): stops stack on one rail, legs between them carry the transit label and line style, names wrap instead of being clipped, and tapping a stop expands its card in place.
 - Layout and plan choices are remembered per trip in `localStorage` when available.
-- Coordinates come from estimated text widths, so output stays byte-deterministic; long names are clipped with `…` and the full name stays in the node's accessible label and detail card.
+- Coordinates come from estimated text widths, so output stays byte-deterministic; long names and lane labels are clipped with `…` and the full name stays in the node's accessible label and detail card.
 - Without JavaScript and in print, only the list layout is shown.
 
 See `examples/taipei-family-3days.html`.

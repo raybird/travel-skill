@@ -101,12 +101,11 @@
             const nodes = Array.from(svg.querySelectorAll('.rm-node'));
             const notes = Array.from(map.querySelectorAll('.rm-note'));
             const detail = map.querySelector('.rm-detail');
-            const zoomLevel = map.querySelector('.rm-zoom-level');
-            const baseWidth = Number(svg.dataset.width);
-            const zoomSteps = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
+            const vertical = map.querySelector('.rm-vertical');
+            const verticalDays = Array.from(vertical.querySelectorAll('.rv-day'));
+            const verticalNodes = Array.from(vertical.querySelectorAll('.rv-node'));
             const storeKey = 'travel-plan:' + tripName + ':';
             let current = '';
-            let zoom = 1;
 
             function store(key, value) {
                 try { localStorage.setItem(storeKey + key, value); } catch (e) {}
@@ -127,19 +126,22 @@
 
             function focusDay(id) {
                 const day = id.startsWith('day-') ? id.slice(4) : '';
-                if (day) {
-                    svg.dataset.focus = day;
-                } else {
-                    delete svg.dataset.focus;
-                }
+                [svg, vertical].forEach((element) => {
+                    if (day) {
+                        element.dataset.focus = day;
+                    } else {
+                        delete element.dataset.focus;
+                    }
+                });
                 lanes.forEach((lane) => lane.classList.toggle('is-focus', lane.dataset.day === day));
+                verticalDays.forEach((item) => item.classList.toggle('is-focus', item.dataset.day === day));
                 notes.forEach((note) => { note.hidden = note.dataset.day !== (day || 'overview'); });
             }
 
             function revealLane(id) {
                 const lane = lanes.find((item) => 'day-' + item.dataset.day === id);
-                if (!lane) return false;
-                viewport.scrollTo({ left: 0, behavior: 'smooth' });
+                // Phones show the vertical route instead of the SVG
+                if (!lane || viewport.offsetParent === null) return false;
                 const rect = lane.getBoundingClientRect();
                 if (rect.top < nav.offsetHeight || rect.bottom > window.innerHeight) {
                     window.scrollBy({ top: rect.top - nav.offsetHeight - 96, behavior: 'smooth' });
@@ -181,13 +183,6 @@
                 });
                 store('layout', layout);
                 showPanel(current);
-            }
-
-            function setZoom(value) {
-                zoom = Math.min(1.5, Math.max(0.25, value));
-                svg.style.width = Math.round(baseWidth * zoom) + 'px';
-                svg.style.height = 'auto';
-                zoomLevel.textContent = Math.round(zoom * 100) + '%';
             }
 
             function scrollToMain() {
@@ -242,6 +237,34 @@
                 button.addEventListener('click', () => setLayout(button.dataset.layout));
             });
 
+            function toggleStop(button) {
+                const open = button.getAttribute('aria-expanded') !== 'true';
+                verticalNodes.forEach((other) => {
+                    if (other !== button && other.getAttribute('aria-expanded') === 'true') {
+                        other.setAttribute('aria-expanded', 'false');
+                        document.getElementById(other.getAttribute('aria-controls')).hidden = true;
+                    }
+                });
+                const panel = document.getElementById(button.getAttribute('aria-controls'));
+                if (open && !panel.firstChild) {
+                    const source = document.getElementById('seg-' + button.dataset.seg);
+                    if (source) {
+                        const card = source.cloneNode(true);
+                        card.removeAttribute('id');
+                        panel.append(card);
+                    }
+                }
+                panel.hidden = !open;
+                button.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) {
+                    button.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            }
+
+            verticalNodes.forEach((button) => {
+                button.addEventListener('click', () => toggleStop(button));
+            });
+
             nodes.forEach((node) => {
                 node.addEventListener('click', () => selectNode(node));
                 node.addEventListener('keydown', (event) => {
@@ -252,25 +275,9 @@
                 });
             });
 
-            map.querySelectorAll('.rm-zoom-btn').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const action = button.dataset.zoom;
-                    if (action === 'fit') {
-                        setZoom((viewport.clientWidth - 4) / baseWidth);
-                        return;
-                    }
-                    const index = zoomSteps.findIndex((step) => step >= zoom - 0.001);
-                    const next = action === 'in'
-                        ? zoomSteps.find((step) => step > zoom + 0.001)
-                        : zoomSteps.slice().reverse().find((step) => step < zoom - 0.001);
-                    setZoom(next || zoomSteps[index] || zoom);
-                });
-            });
-
             const savedPlan = stored('plan');
             setPlan(savedPlan === 'rain' ? 'rain' : 'sun');
             current = decodeURIComponent(location.hash.slice(1));
-            setZoom(1);
             setLayout(stored('layout') === 'map' ? 'map' : 'list');
         })();
     </script>
